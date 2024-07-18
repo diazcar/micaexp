@@ -6,6 +6,7 @@
 local
 notebook
 data/*
+!physicals.csv
 
 
 

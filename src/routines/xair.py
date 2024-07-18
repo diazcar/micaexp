@@ -81,6 +81,46 @@ DATA_KEYS = {
     "measures": "measures",
 }
 
+DATA_KEYS = {
+    "data": "data",
+    "sites": "sites",
+    "physicals": "physicals",
+    "measures": "measures",
+}
+
+
+def wrap_xair_request(
+        fromtime: str,
+        totime: str,
+        keys: dict,
+        sites: list[str,],
+        physicals: list[str,],
+        datatype: str = "hourly",
+) -> pd.DataFrame:
+
+    xair_site_measures = request_xr(
+        folder=keys['measures'],
+        sites=sites,
+        physical=physicals,
+    )
+
+    xair_data_raw = request_xr(
+        fromtime=fromtime,
+        totime=totime,
+        folder=keys['data'],
+        measures=",".join(xair_site_measures['id'].to_list()),
+        datatype=datatype,
+    )
+
+    xair_data_raw['date'] = pd.to_datetime(
+        xair_data_raw['date'],
+        format="%Y-%m-%dT%H:%M:%SZ"
+        )
+    xair_data_raw.set_index('date', inplace=True)
+    xair_data = mask_aorp(xair_data_raw)
+
+    return (xair_data)
+
 
 def time_window(date: str = None):
 
@@ -113,6 +153,7 @@ def request_xr(
     groups: str = "",
     sites: str = "",
     measures: str = "",
+    physicals: str ="",
     header_for_df: list = None
 ) -> pd.DataFrame:
     """
@@ -151,7 +192,8 @@ def request_xr(
         f"sites={sites}&"
         f"dataTypes={datatype}&"
         f"groups={groups}&"
-        f"measures={measures}"
+        f"measures={measures}&"
+        f"physicals={physicals}&"
     )
 
     with warnings.catch_warnings():
