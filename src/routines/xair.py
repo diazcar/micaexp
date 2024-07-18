@@ -122,27 +122,40 @@ def wrap_xair_request(
     return (xair_data)
 
 
-def time_window(date: str = None):
+def time_window(
+        format_str: str = None,
+        date: str = None,
+
+        ):
 
     days = 5
     time_delta = dt.timedelta(days)
 
     if date:
-        time_now = dt.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+        time_now = dt.datetime.strptime(date, format)
     else:
         time_now = dt.datetime.now()
 
     end_time = dt.datetime.combine(
         time_now,
         dt.datetime.max.time()
-        ).strftime(format="%Y-%m-%dT%H:%M:%SZ")
+        )
 
     start_time = dt.datetime.combine(
         time_now-time_delta,
         dt.datetime.min.time()
-        ).strftime(format="%Y-%m-%dT%H:%M:%SZ")
+        )
 
-    return (start_time, end_time)
+    if format_str:
+        return (
+            start_time.strftime(format=format_str),
+            end_time.strftime(format=format_str)
+            )
+    else:
+        return (
+            start_time,
+            end_time
+        )
 
 
 def request_xr(
