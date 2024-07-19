@@ -1,6 +1,8 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 from src.layout.styles import CONTENT_STYLE
+from maindash import app
+from app import args
 
 
 def get_content():
@@ -64,3 +66,7 @@ def get_content():
         ],
         style=CONTENT_STYLE,
     )
+
+@app.callback(
+    Input=
+)
