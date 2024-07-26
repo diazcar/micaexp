@@ -1,12 +1,17 @@
-import math
 import os
 import warnings
-from matplotlib import dates, pyplot as plt, ticker
 import requests
 import datetime as dt
 import pandas as pd
 import numpy as np
-import sys
+
+from src.fonctions import mask_duplicates
+
+ISO = {
+    'PM10': '24',
+    'PM2.5': '39',
+    'PM1': '68',
+}
 
 JSON_PATH_LISTS = {
     'sites': {
@@ -14,7 +19,17 @@ JSON_PATH_LISTS = {
         'meta': [
             'id',
             'labelSite',
+            'startDate',
+            'stopDate',
             ['address', ['department', 'id']],
+            ['address', ['department', 'labelDepartment']],
+            ['address', ['commune', 'labelCommune']],
+            ['adress', 'latitude'],
+            ['adress', 'longitude'],
+            ['environment', 'locationTypeLabel'],
+            ['environment', 'classTypeLabel'],
+            ['sectors', 'zoneOfActivityLabel'],
+
         ]
     },
     'measures': {
@@ -28,10 +43,10 @@ JSON_PATH_LISTS = {
         ],
     },
     'data': {
-        'record_path': ['hourly', 'data',],
+        'record_path': ['sta', 'data',],
         'meta': [
             'id',
-            ['hourly', 'unit', 'id'],
+            ['sta', 'unit', 'id'],
         ],
     },
     'physicals': {
@@ -45,6 +60,13 @@ HEADER_RENAME_LISTS = {
         'id': 'id',
         'labelSite': 'labelSite',
         'address.department.id': 'dept_code',
+        'address.department.labelDepartment': 'labelDepartment',
+        'address.commune.labelCommune': 'labelCommune',
+        'address.latitude': 'latitude',
+        'address.longitude': 'longitude',
+        'environment.locationTypeLabel': 'locationTypeLabel',
+        'environment.classTypeLabel': 'classTypeLabel',
+        'sectors.zoneOfActivityLabel': 'zoneOfActivityLabel',
     },
     'measures': {
         'id': 'id',
@@ -55,7 +77,7 @@ HEADER_RENAME_LISTS = {
     },
     'data': {
         'id': 'id',
-        'hourly.unit.id': 'unit',
+        'sta.unit.id': 'unit',
         'value': 'value',
         'date': 'date',
         'state': 'state',
@@ -88,26 +110,35 @@ DATA_KEYS = {
     "measures": "measures",
 }
 
+DATATYPES = {
+    'quart-horaire': 'base',
+    'horaire': 'hourly'
+}
+
 
 def wrap_xair_request(
         fromtime: str,
         totime: str,
-        keys: dict,
+        keys: str,
         sites: list[str,],
         physicals: list[str,],
         datatype: str = "hourly",
 ) -> pd.DataFrame:
 
     xair_site_measures = request_xr(
-        folder=keys['measures'],
+        folder=DATA_KEYS['measures'],
         sites=sites,
-        physical=physicals,
+        physicals=physicals,
     )
+
+    fromtime, totime = format_time_for_xair(
+        fromtime,
+        totime)
 
     xair_data_raw = request_xr(
         fromtime=fromtime,
         totime=totime,
-        folder=keys['data'],
+        folder=DATA_KEYS['data'],
         measures=",".join(xair_site_measures['id'].to_list()),
         datatype=datatype,
     )
@@ -117,9 +148,35 @@ def wrap_xair_request(
         format="%Y-%m-%dT%H:%M:%SZ"
         )
     xair_data_raw.set_index('date', inplace=True)
+
     xair_data = mask_aorp(xair_data_raw)
 
+    xair_data = mask_duplicates(
+        data=xair_data,
+        site_name=sites,
+        poll_iso=physicals,
+        )
+    print()
     return (xair_data)
+
+
+def format_time_for_xair(
+        fromtime: np.datetime64,
+        totime: np.datetime64,
+):
+    fromtime = dt.datetime.strptime(
+        fromtime.split(".")[0],
+        "%Y-%m-%dT%H:%M:%S"
+        )
+    totime = dt.datetime.strptime(
+        totime.split(".")[0],
+        "%Y-%m-%dT%H:%M:%S"
+        )
+
+    return (
+        fromtime.strftime(format="%Y-%m-%dT%H:%M:%SZ"),
+        totime.strftime(format="%Y-%m-%dT%H:%M:%SZ")
+        )
 
 
 def time_window(
@@ -166,7 +223,7 @@ def request_xr(
     groups: str = "",
     sites: str = "",
     measures: str = "",
-    physicals: str ="",
+    physicals: str = "",
     header_for_df: list = None
 ) -> pd.DataFrame:
     """
@@ -215,12 +272,14 @@ def request_xr(
         request_data = requests.get(
             url, verify=False
             ).json()[DATA_KEYS[folder]]
-
         data = pd.json_normalize(
             data=request_data,
             record_path=JSON_PATH_LISTS[folder]['record_path'],
-            meta=JSON_PATH_LISTS[folder]['meta'],
-        )[list(HEADER_RENAME_LISTS[folder].keys())]
+            meta=JSON_PATH_LISTS[folder]['meta'])
+        for col in data.columns:
+            if col not in list(HEADER_RENAME_LISTS[folder].keys()):
+                data[col] = np.nan
+
     return (data.rename(columns=HEADER_RENAME_LISTS[folder]))
 
 
@@ -334,6 +393,7 @@ def mask_aorp(data):
             axis=1
     )
     return (data[['id', 'value', 'unit']])
+
 
 def get_figure_title(
     group_data: pd.DataFrame,
