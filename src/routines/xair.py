@@ -5,8 +5,6 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 
-from src.fonctions import mask_duplicates
-
 ISO = {
     'PM10': '24',
     'PM2.5': '39',
@@ -156,7 +154,7 @@ def wrap_xair_request(
         site_name=sites,
         poll_iso=physicals,
         )
-    print()
+
     return (xair_data)
 
 
@@ -164,12 +162,13 @@ def format_time_for_xair(
         fromtime: np.datetime64,
         totime: np.datetime64,
 ):
+
     fromtime = dt.datetime.strptime(
-        fromtime.split(".")[0],
+        f'{fromtime.split("T")[0]}T00:00:00',
         "%Y-%m-%dT%H:%M:%S"
         )
     totime = dt.datetime.strptime(
-        totime.split(".")[0],
+        f'{totime.split("T")[0]}T00:00:00',
         "%Y-%m-%dT%H:%M:%S"
         )
 
@@ -265,7 +264,6 @@ def request_xr(
         f"measures={measures}&"
         f"physicals={physicals}&"
     )
-
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
 
@@ -436,3 +434,22 @@ def get_figure_title(
             ]['dept_code'].values[0]
 
     return (site_name, dept_code)
+
+
+def mask_duplicates(
+    data: pd.DataFrame,
+    site_name: str,
+    poll_iso: str,
+):
+    if poll_iso == '24':
+        data_out = data[data['id'].str.contains(f'PC{site_name[:2]}')]
+    if poll_iso == '39':
+        data_out = data[data['id'].str.contains(f'P2{site_name[:2]}')]
+    if poll_iso == '68':
+        for id in data.id.unique():
+            if f'PM1{site_name[:2]}'.lower() in str(id).lower():
+                data_out = data[data['id'].str.contains(f'PM1{site_name[:2]}')]
+                break
+            else:
+                data_out = data[data['id'] == data['id'].unique()[0]]
+    return data_out

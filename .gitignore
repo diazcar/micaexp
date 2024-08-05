@@ -2,13 +2,14 @@
 # keep
 !.gitkeep
 
+#vscode
+.vscode
+
 # Local
 local
 notebook
 data/*
 !physicals.csv
-
-
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

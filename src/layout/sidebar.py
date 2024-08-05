@@ -1,4 +1,5 @@
 from dash import html, dcc, Output, Input
+import dash_bootstrap_components as dbc
 from datetime import datetime, timedelta
 from src.glob_vars import TIME_NOW
 from src.layout.styles import SIDEBAR_STYLE
@@ -22,18 +23,21 @@ def get_sidebar():
         [
             html.Img(src="assets/logo_atmosud_inspirer_web.png"),
             html.Hr(),
-            html.P("Polluant", className="lead"),
+            html.B("Polluant"),
             html.Div(
                 [
                     dcc.Dropdown(
                         options=['PM10', 'PM2.5', 'PM1'],
-                        value='PM1',
+                        value='PM10',
                         id="polluant_dropdown",
+                        style={
+                            "border": "0",
+                            "background": "transparent"}
                     )
                 ]
             ),
             html.Hr(),
-            html.P("Dates", className="lead"),
+            html.B("Dates"),
             html.Div(
                 [
                     dcc.DatePickerRange(
@@ -44,13 +48,15 @@ def get_sidebar():
                         start_date=time_window()[0],
                         end_date=time_window()[1],
                         display_format='YYYY-MM-DD',
-                        style={'font-size': 6},
+                        style={
+                            'font-size': 6,
+                            },
                     ),
                     html.Div(id='output-container-date-picker-range')
                 ]
             ),
             html.Hr(),
-            html.P("Pas de temp", className="lead"),
+            html.B("Pas de temps"),
             html.Div(
                 [
                     dcc.Dropdown(
@@ -58,48 +64,63 @@ def get_sidebar():
                             'quart-horaire',
                             'horaire',
                             'journalière',
-                            'mensuelle'
                             ],
-                        value='quart-horaire',
+                        value='horaire',
                         id="time_step_dropdown",
+                        style={
+                            "border": "0",
+                            "background": "transparent"},
                     )
                 ]
             ),
+            # html.Hr(),
+            # html.P("Campagne", className="lead"),
+            # html.Div(
+            #     [
+            #         dcc.Dropdown(
+            #             options=['C1', 'C2', 'C3'],
+            #             value=None,
+            #             id="campagne_dropdown",
+            #         )
+            #     ]
+            # ),
             html.Hr(),
-            html.P("Campagne", className="lead"),
-            html.Div(
-                [
-                    dcc.Dropdown(
-                        options=['C1', 'C2', 'C3'],
-                        value=None,
-                        id="campagne_dropdown",
-                    )
-                ]
-            ),
-            html.Hr(),
-            html.P("Sites (MicroCapteurs ID) ", className="lead"),
+            html.B("Sites (MicroCapteurs ID) "),
             html.Div(
                 [
                     dcc.Dropdown(
                         options=CAPTEUR_SITE_LIST,
                         value=CAPTEUR_SITE_LIST[0],
                         id="micro_capteur_sites_dropdown",
-                        className='dropUp'
+                        className='dropUp',
+                        style={
+                            "border": "0",
+                            "background": "transparent"},
                     )
                 ]
             ),
             html.Hr(),
-            html.P("Station Atmosud", className="lead"),
+            html.B("Station Atmosud"),
             html.Div(
                 [
                     dcc.Dropdown(
                         options=['ARSON'],
                         id="station_xair_dropdown",
                         value='ARSON',
-                        className='dropUp'
+                        className='dropUp',
+                        style={
+                            "border": "0",
+                            "background": "transparent"},
                     )
                 ]
             ),
+            html.Hr(),
+            html.H4(html.B('Micro Capteur')),
+            html.H6(id='micro_capteur_info'),
+            html.Br(),
+            html.Hr(),
+            html.H4(html.B("Station AtmoSud")),
+            html.H6(id='station_info'),
         ],
         style=SIDEBAR_STYLE,
     )
@@ -150,4 +171,4 @@ def get_station_dropdown(
 ) -> list:
     return request_xr(
         folder='measures',
-        physicals=ISO[poll]).id_site.to_list()
+        physicals=ISO[poll]).id_site.unique()

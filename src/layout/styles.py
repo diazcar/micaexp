@@ -1,6 +1,8 @@
 # the style arguments for the sidebar. We use position:fixed and a fixed width
 SIDEBAR_STYLE = {
-    "position": "fixed",
+    # "position": "fixed",
+    "display": "inline-block",
+    "vertical-align": "left",
     "top": 0,
     "left": 0,
     "bottom": 0,
@@ -12,7 +14,11 @@ SIDEBAR_STYLE = {
 # the styles for the main content position it to the right of the sidebar and
 # add some padding.
 CONTENT_STYLE = {
-    "margin-left": "20rem",
-    "margin-right": "2rem",
+    "display": "inline-block",
+    "vertical-align": "top",
+    "top": 0,
+    "left": 0,
+    "bottom": 0,
+    "width": "70%",
     "padding": "2rem 1rem",
 }

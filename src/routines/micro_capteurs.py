@@ -124,7 +124,7 @@ def request_api_observations(
         )
         if nom_site:
             url += f"nom_site={nom_site}&"
-        print(url)
+
     if folder_key == 'mesures':
         url = "".join(
             [
