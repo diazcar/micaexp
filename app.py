@@ -3,8 +3,7 @@ from src.layout.sidebar import get_sidebar
 from src.layout.content import get_content
 from maindash import app
 
-if __name__ == '__main__':
-    app.layout = html.Div(
+app.layout = html.Div(
         [
             dcc.Location(id="url"),
             get_sidebar(),
@@ -18,4 +17,8 @@ if __name__ == '__main__':
                 ),
             ]
     )
+
+server = app.server
+
+if __name__ == '__main__':
     app.run_server(debug=True)

@@ -61,13 +61,25 @@ def get_content():
 
             dbc.Row([
                 dbc.Col([
-                    dcc.Graph(figure={}, id="diurnal_cycle_workweek")
+                    dcc.Graph(
+                        figure={},
+                        id="diurnal_cycle_workweek",
+                        style=dict(
+                            height='30vh'
+                            )
+                        )
                     ], width=12),
                 ]),
             html.Br(),
             dbc.Row([
                 dbc.Col([
-                    dcc.Graph(figure={}, id="diurnal_cycle_weekend")
+                    dcc.Graph(
+                        figure={},
+                        id="diurnal_cycle_weekend",
+                        style=dict(
+                            height='30vh'
+                            )
+                        )
                     ], width=12),
                 ]),
             html.Br(),
@@ -235,7 +247,7 @@ def build_graphs(
             )
         )
 
-    if polluant == 'PM10':
+    if polluant in ['PM10', 'PM2.5']:
         for i, seuil in enumerate(list(SEUILS[polluant]['FR'].keys())):
             timeseries_fig.add_trace(
                 go.Scatter(
@@ -281,7 +293,6 @@ def build_graphs(
     # ---------------------------------------------------
 
     week_diurnal_cycle_fig = go.Figure()
-    print(week_diurnal_cycle_data.index)
     for i, col in enumerate(week_diurnal_cycle_data.columns):
         week_diurnal_cycle_fig.add_trace(
             go.Scatter(
@@ -362,20 +373,51 @@ def build_graphs(
     #        BOXPLOT CAPTEUR
     # ---------------------------------------------------
     fig_boxplot = go.Figure()
+    fig_boxplot.layout.xaxis2 = go.layout.XAxis(
+        overlaying='x',
+        range=[0, 1],
+        showticklabels=False
+        )
 
-    for i, col in enumerate(quart_data.columns):
+    for i, col in enumerate(graph_data.columns):
         fig_boxplot.add_trace(
             go.Box(
                 y=graph_data[col],
                 name=names[i],
+                boxpoints='all',
+                boxmean='sd'
             )
         )
+    if polluant in ['PM10', 'PM2.5']:
+        for i, seuil in enumerate(list(SEUILS[polluant]['FR'].keys())):
+            seuil_value = SEUILS[polluant]['FR'][seuil]
+
+            fig_boxplot.add_annotation(
+                x=0.2,
+                y=SEUILS[polluant]['FR'][seuil],
+                text=seuil,
+                axref='pixel'
+            )
+
+            fig_boxplot.add_scatter(
+                x=[0, 1],
+                y=[seuil_value, seuil_value],
+                mode='lines',
+                xaxis='x2',
+                showlegend=False,
+                line=dict(
+                    dash='dash',
+                    color="firebrick",
+                    width=2
+                    )
+                )
 
     fig_boxplot.update_layout(
         title=graph_title('boxplot', aggregation, polluant),
         title_x=0.5,
         yaxis_title=f"{polluant} {UNITS[polluant]}",
         xaxis_title='',
+        xaxis2_showticklabels=False,
         showlegend=False,
         margin=dict(
                 b=0,
