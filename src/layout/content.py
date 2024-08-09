@@ -204,7 +204,7 @@ def build_graphs(
     )
     data.index.name = 'date'
 
-    quart_data = clean_outlayers(data)
+    quart_data = data.copy(deep=True) #clean_outlayers(data)
     hour_data = data.resample('H').mean()
     day_data = data.resample('D').mean()
 
