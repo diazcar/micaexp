@@ -6,6 +6,8 @@
 .vscode
 
 # Local
+*.sh
+*.out
 local
 notebook
 data/*

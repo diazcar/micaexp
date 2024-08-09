@@ -86,10 +86,13 @@ def get_content():
             dbc.Row([
                 dbc.Col([
                     dcc.Graph(figure={}, id="boxplot"),
-                    ], width=6),
+                    ], width=7),
                 dbc.Col([
-                    dcc.Graph(figure={}, id="scatter_plot"),
-                    ], width=6),
+                    # dcc.Graph(figure={}, id="scatter_plot"),
+                    html.Img(
+                       src="assets/boxplot_description.png",
+                       ),
+                    ], width=5),
                 ]),
             html.Hr(),
             dbc.Row([
@@ -127,7 +130,7 @@ def build_title(microcapteur: str, poll: str):
         Output('diurnal_cycle_workweek', 'figure'),
         Output('diurnal_cycle_weekend', 'figure'),
         Output('boxplot', 'figure'),
-        Output('scatter_plot', 'figure'),
+        # Output('scatter_plot', 'figure'),
         Output('names_col', 'children'),
         Output('stats_col_1', 'children'),
         Output('stats_col_2', 'children'),
@@ -228,16 +231,12 @@ def build_graphs(
         data=graph_data,
         week_section='weekend',
     )
-    y_max = get_max(
-        week_diurnal_cycle_data,
-        wend_diurnal_cycle_data
-    )
-
+    
     # -------------------------------------
     #  CAPTEUR             TIMESERIES
     # -------------------------------------
     timeseries_fig = go.Figure()
-
+    y_max = graph_data.max().max()
     for i, col in enumerate(graph_data.columns):
         timeseries_fig.add_trace(
             go.Scatter(
@@ -286,11 +285,17 @@ def build_graphs(
                 l=0,
                 r=0,
                 t=0,
-            )
+            ),
+        yaxis_range=[0, y_max+y_max*.05]
+
     )
     # ---------------------------------------------------
     # CAPTEUR         WEEKDAY DIURNAL CYCLE
     # ---------------------------------------------------
+    y_max = get_max(
+        week_diurnal_cycle_data,
+        wend_diurnal_cycle_data
+    )
 
     week_diurnal_cycle_fig = go.Figure()
     for i, col in enumerate(week_diurnal_cycle_data.columns):
@@ -373,6 +378,7 @@ def build_graphs(
     #        BOXPLOT CAPTEUR
     # ---------------------------------------------------
     fig_boxplot = go.Figure()
+    y_max = graph_data.max().max()
     fig_boxplot.layout.xaxis2 = go.layout.XAxis(
         overlaying='x',
         range=[0, 1],
@@ -391,7 +397,6 @@ def build_graphs(
     if polluant in ['PM10', 'PM2.5']:
         for i, seuil in enumerate(list(SEUILS[polluant]['FR'].keys())):
             seuil_value = SEUILS[polluant]['FR'][seuil]
-
             fig_boxplot.add_annotation(
                 x=0.2,
                 y=SEUILS[polluant]['FR'][seuil],
@@ -424,7 +429,9 @@ def build_graphs(
                 l=0,
                 r=0,
                 t=25,
-            )
+            ),
+        yaxis_range=[0, y_max+y_max*.05]
+
     )
 
     # ---------------------------------------------------
@@ -513,7 +520,7 @@ def build_graphs(
         week_diurnal_cycle_fig,
         wend_diurnal_cycle_fig,
         fig_boxplot,
-        fig_scatterplot,
+        # fig_scatterplot,
         names,
         p1,
         p2,

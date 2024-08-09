@@ -42,7 +42,7 @@ JSON_PATH_LIST = {
     },
     'mesures': {
         'record_path': None,
-        'meta': [  
+        'meta': [
             "id_site",
             "time",
             "nom_site",
