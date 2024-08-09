@@ -8,7 +8,7 @@
 *.sh
 *.out
 local
-notebook
+notebook/*
 data/*
 !physicals.csv
 
