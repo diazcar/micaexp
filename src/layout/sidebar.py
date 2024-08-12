@@ -169,6 +169,10 @@ def site_date_window(site_name):
 def get_station_dropdown(
     poll: str,
 ) -> list:
-    return request_xr(
+    
+    list_options = request_xr(
         folder='measures',
-        physicals=ISO[poll]).id_site.unique()
+        physicals=ISO[poll],
+        groups='DIDON').id_site.unique()
+
+    return list_options

@@ -277,7 +277,6 @@ def request_xr(
         for col in data.columns:
             if col not in list(HEADER_RENAME_LISTS[folder].keys()):
                 data[col] = np.nan
-
     return (data.rename(columns=HEADER_RENAME_LISTS[folder]))
 
 

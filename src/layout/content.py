@@ -204,9 +204,29 @@ def build_graphs(
     )
     data.index.name = 'date'
 
-    quart_data = data.copy(deep=True) #clean_outlayers(data)
-    hour_data = data.resample('H').mean()
-    day_data = data.resample('D').mean()
+    def validate_and_aggregate(
+            data: pd.DataFrame,
+            threshold: int = 0.75,
+    ):
+        data['data_coverage'] = (~np.isnan(data['valeur_ref'])).astype(int)
+
+        hour_data = data.resample('H').mean()
+        hour_data.loc[
+            hour_data['data_coverage'] < threshold, ['valeur_ref', 'value']
+            ] = np.nan
+        hour_data.drop(['data_coverage'], axis=1, inplace=True)
+
+        day_data = data.resample('D').mean()
+        day_data.loc[
+            day_data['data_coverage'] < threshold, ['valeur_ref', 'value']
+            ] = np.nan
+        day_data.drop(['data_coverage'], axis=1, inplace=True)
+
+        data.drop(['data_coverage'], axis=1, inplace=True)
+        return (hour_data, day_data)
+
+    hour_data, day_data = validate_and_aggregate(data)
+    quart_data = data.copy(deep=True)  # clean_outlayers(data)
 
     if aggregation == 'quart-horaire':
         graph_data = quart_data
@@ -231,7 +251,7 @@ def build_graphs(
         data=graph_data,
         week_section='weekend',
     )
-    
+
     # -------------------------------------
     #  CAPTEUR             TIMESERIES
     # -------------------------------------
@@ -261,7 +281,9 @@ def build_graphs(
                 )
             )
             timeseries_fig.add_annotation(
-                x=graph_data.index[50],
+                x=graph_data.index[
+                    round(len(graph_data.index)*0.1)
+                ],
                 y=SEUILS[polluant]['FR'][seuil],
                 text=seuil
             )
@@ -286,7 +308,7 @@ def build_graphs(
                 r=0,
                 t=0,
             ),
-        yaxis_range=[0, y_max+y_max*.05]
+            yaxis_range=[0, y_max+y_max*.05]
 
     )
     # ---------------------------------------------------
@@ -311,7 +333,9 @@ def build_graphs(
             title="Profile journalier en semaine",
             title_x=0.5,
             xaxis=dict(
-                nticks=round(len(week_diurnal_cycle_data.index)/dcycle_xticks_div),
+                nticks=round(
+                    len(week_diurnal_cycle_data.index)/dcycle_xticks_div
+                    ),
                 tick0=week_diurnal_cycle_data.index[1],
                 tickformat="%H:%M",
                 tickangle=90,
@@ -353,7 +377,9 @@ def build_graphs(
             title_x=0.5,
             xaxis=dict(
                 tick0=week_diurnal_cycle_data.index[1],
-                nticks=round(len(week_diurnal_cycle_data.index)/dcycle_xticks_div),
+                nticks=round(
+                    len(week_diurnal_cycle_data.index)/dcycle_xticks_div
+                    ),
                 tickformat="%H:%M",
                 tickangle=90,
             ),
@@ -496,20 +522,18 @@ def build_graphs(
                 html.B("du seuil d'information:"),
                 html.Br(),
                 html.B(f'({seuil_information} µg/m³ en moyenne sur 24h)'),
-            ]),
+                ]),
         html.Br(),
         html.Center(html.H3(f'{count_seuil_information[0]}')),
         html.Center(html.H3(f' {count_seuil_information[1]}'))
     ])
     p3 = html.P([
-        html.Center(
-            [
+        html.Center([
                 html.B('Nombre de dépassements'),
                 html.B(" du seuil d'alerte:"),
                 html.Br(),
                 html.B(f'({seuil_alert} µg/m³ en moyenne sur 24h)')
-            ]
-        ),
+                ]),
         html.Br(),
         html.Center(html.H3(f'{count_seuil_alert[0]}')),
         html.Center(html.H3(f'{count_seuil_alert[1]}'))

@@ -41,7 +41,18 @@ def weekday_profile(
                 axis=1
             )
         datime_format = '%H'
-        
+    
+    if aggregation == 'journalière':
+        for col in ['valeur_ref', 'value']:
+            grouped_data = days_data[[index, col]].groupby(
+                days_data[index].dt.day
+                ).mean().drop([index], axis=1)
+            out_data = pd.concat(
+                [out_data, grouped_data],
+                axis=1
+            )
+        datime_format = '%d'
+
     out_data.index.name = 'heure'
     out_data.reset_index(inplace=True)
     out_data['heure'] = pd.to_datetime(out_data['heure'], format=datime_format)
@@ -114,6 +125,7 @@ def clean_outlayers(data: pd.DataFrame):
             )
     return data
 
+
 def graph_title(
         graph_type: str,
         aggregation: str,
@@ -124,9 +136,13 @@ def graph_title(
             title = f"Concentration {aggregation} en {polluant}"
         if aggregation == 'horaire':
             title = f"Concentrations moyennes horaires en {polluant}"
+        if aggregation == 'journalière':
+            title = f"Concentrations moyennes journalièrs en {polluant}"
     if graph_type == 'boxplot':
         if aggregation == 'quart-horaire':
             title = f"Distribution des concentrations quart-horaire en {polluant}"
-        if aggregation == 'horaire':  
+        if aggregation == 'horaire':
             title = f"Distribution des concentrations horaires en {polluant}"
+        if aggregation == 'journalière':
+            title = f"Distribution des concentrations journalièrs en {polluant}"
     return title
