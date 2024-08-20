@@ -1,11 +1,14 @@
+import base64
+import io
 from dash import html, dcc, Input, Output
 import dash_bootstrap_components as dbc
 import pandas as pd
+import geopandas as gp
 import datetime as dt
 from plotly import graph_objects as go
 import numpy as np
-from src.fonctions import clean_outlayers, get_max, get_stats, graph_title, weekday_profile
-from src.glob_vars import SEUILS, UNITS
+from src.fonctions import clean_outlayers, get_geoDF, get_max, get_stats, get_zoom_level_and_center, graph_title, validate_and_aggregate, weekday_profile
+from src.glob_vars import COLORS, SEUILS, UNITS
 from src.layout.styles import CONTENT_STYLE
 from maindash import app
 from src.routines.micro_capteurs import (
@@ -36,17 +39,17 @@ def get_content():
                     html.H6(
                         id='stats_col_2',
                     )
-                ], width=4),
+                ], width=2),
                 dbc.Col([
                     html.H6(
                         id='stats_col_3',
                     )
-                ]),
+                ], width=3),
                 dbc.Col([
                     html.H6(
                         id='stats_col_4',
                     )
-                ], width=4),
+                ], width=3),
             ]),
             html.Br(),
             dbc.Row([
@@ -85,26 +88,39 @@ def get_content():
             html.Br(),
             dbc.Row([
                 dbc.Col([
+                    html.Br(),
+                    html.Br(),
+                    html.Br(),
+                    html.Br(),
+
                     dcc.Graph(figure={}, id="boxplot"),
                     ], width=7),
                 dbc.Col([
-                    # dcc.Graph(figure={}, id="scatter_plot"),
-                    html.Img(
-                       src="assets/boxplot_description.png",
-                       ),
+                    # html.Img(
+                        # id='map_image',
+                        # # src="assets/map.png",
+                        # style=dict(height='70%', widht='70%')
+
+                        # )
+                    dcc.Graph(figure={}, id="map"),
                     ], width=5),
-                ]),
+            ]),
             html.Hr(),
-            dbc.Row([
-                   html.Img(
-                       src="assets/definitions.png",
-                       style={'height': '70%'}
-                       ),
-                   html.Img(
-                       src="assets/valeurs_de_reference.png",
-                       style={'height': '70%'}
-                       ),
-            ], justify="Center"),
+            html.Img(
+                src="assets/valeurs_de_reference.png",
+                style={'height': '70%'}
+                ),
+
+            html.H6(
+                [
+                    html.B("Seuil d’information "), "- Niveau de concentration sur 24h au delà duquel des informations sont diffusées aux personnes sensibles", html.Br(),
+                    html.B("Seuil d’alerte "),	"- Niveau de concentration sur 24h au delà duquel il y a un risque pour la santé justifiant de mesures d'urgence", html.Br(),
+                    html.B("Ligne directrice (LD) "),	"- Valeur recommandée par l'Organisation Mondiale de la Santé", html.Br(),
+                    html.B("Valeur cible (VC) "),	"- Niveau de concentration à atteindre dans un délai donné", html.Br(),
+                    html.B("Valeur limite (VL) "), "-Niveau réglementaire de concentration à ne pas dépasser", html.Br(),
+                    html.B("Objectif qualité (OQ) "), "-Niveau de concentration à attendre à long terme", html.Br(),
+        ]
+    )
         ],
         style=CONTENT_STYLE,
     )
@@ -120,9 +136,69 @@ def build_title(microcapteur: str, poll: str):
     nom_site = microcapteur.split(" - ")[0]
     return html.B(
         html.Center(
-            f"Observations {poll} du microcapteur sur le site de {nom_site}"
+            f"Données {poll} du microcapteur {nom_site}"
             ),
         )
+
+
+@app.callback(
+        # Output('map_img', 'src'),
+        Output('map', 'figure'),
+        Input('micro_capteur_sites_dropdown', 'value'),
+        Input('station_xair_dropdown', 'value'),
+)
+def generate_map(
+    site_plus_capteur: str,
+    station_name: str
+):
+    cap_name = site_plus_capteur.split(" - ")[0]
+    source_select = ['capteur', 'station']
+    names = [cap_name, station_name]
+    # ---------------------------------------------------
+    #                       MAP
+    # ---------------------------------------------------
+    gdf = get_geoDF(
+        nom_capteur=cap_name,
+        nom_station=station_name,
+    )
+
+    fig_map = go.Figure(layout=dict(height=600, width=800))
+
+    zoom, center = get_zoom_level_and_center(
+        longitudes=gdf['lon'].values,
+        latitudes=gdf['lat'].values
+    )
+    print(zoom)
+    for i in gdf.index:
+        fig_map.add_trace(
+            go.Scattermapbox(
+                lat=[gdf.geometry.y[i]],
+                lon=[gdf.geometry.x[i]],
+                name=f'{names[i]}',
+                mode='markers',
+                marker=dict(
+                    size=15,
+                    color=COLORS['markers'][source_select[i]]
+                ),
+            )
+        )
+
+    fig_map.update_layout(
+        mapbox_style="open-street-map",
+        mapbox_zoom=zoom,
+        mapbox_center=dict(
+            lon=center[0],
+            lat=center[1]
+            ),
+        autosize=True,
+        margin=dict(t=0, b=0, l=5, r=0),
+        )
+
+    # img = io.BytesIO()
+    # fig_svg = fig_map.to_svg(format='svg')
+    # img.write(fig_svg)
+    # img_out = 'data:image/png;base64,' + base64.b64encode(img).decode('utf-8')
+    return fig_map
 
 
 @app.callback(
@@ -130,11 +206,11 @@ def build_title(microcapteur: str, poll: str):
         Output('diurnal_cycle_workweek', 'figure'),
         Output('diurnal_cycle_weekend', 'figure'),
         Output('boxplot', 'figure'),
-        # Output('scatter_plot', 'figure'),
         Output('names_col', 'children'),
         Output('stats_col_1', 'children'),
         Output('stats_col_2', 'children'),
         Output('stats_col_3', 'children'),
+        Output('stats_col_4', 'children'),
         Input('my-date-picker-range', 'start_date'),
         Input('my-date-picker-range', 'end_date'),
         Input('micro_capteur_sites_dropdown', 'value'),
@@ -194,6 +270,7 @@ def build_graphs(
     station_data.to_csv("./notebook/timeseries_station_test.csv")
 
     names = [cap_name, station_name]
+    source_select = ['capteur', 'station']
 
     # ---------------------------------------
     # Graphs datas
@@ -204,29 +281,8 @@ def build_graphs(
     )
     data.index.name = 'date'
 
-    def validate_and_aggregate(
-            data: pd.DataFrame,
-            threshold: int = 0.75,
-    ):
-        data['data_coverage'] = (~np.isnan(data['valeur_ref'])).astype(int)
-
-        hour_data = data.resample('H').mean()
-        hour_data.loc[
-            hour_data['data_coverage'] < threshold, ['valeur_ref', 'value']
-            ] = np.nan
-        hour_data.drop(['data_coverage'], axis=1, inplace=True)
-
-        day_data = data.resample('D').mean()
-        day_data.loc[
-            day_data['data_coverage'] < threshold, ['valeur_ref', 'value']
-            ] = np.nan
-        day_data.drop(['data_coverage'], axis=1, inplace=True)
-
-        data.drop(['data_coverage'], axis=1, inplace=True)
-        return (hour_data, day_data)
-
     hour_data, day_data = validate_and_aggregate(data)
-    quart_data = data.copy(deep=True)  # clean_outlayers(data)
+    quart_data = data.copy(deep=True)
 
     if aggregation == 'quart-horaire':
         graph_data = quart_data
@@ -257,11 +313,13 @@ def build_graphs(
     # -------------------------------------
     timeseries_fig = go.Figure()
     y_max = graph_data.max().max()
+
     for i, col in enumerate(graph_data.columns):
         timeseries_fig.add_trace(
             go.Scatter(
                 y=graph_data[col],
                 x=graph_data.index,
+                line=dict(color=COLORS['lines'][source_select[i]]),
                 name=names[i],
             )
         )
@@ -325,12 +383,13 @@ def build_graphs(
             go.Scatter(
                 y=week_diurnal_cycle_data[col],
                 x=week_diurnal_cycle_data.index,
+                line=dict(color=COLORS['lines'][source_select[i]]),
                 name=names[i],
             )
         )
 
     week_diurnal_cycle_fig.update_layout(
-            title="Profile journalier en semaine",
+            title="Profil journalier en semaine",
             title_x=0.5,
             xaxis=dict(
                 nticks=round(
@@ -368,12 +427,13 @@ def build_graphs(
             go.Scatter(
                 y=wend_diurnal_cycle_data[col],
                 x=wend_diurnal_cycle_data.index,
+                line=dict(color=COLORS['lines'][source_select[i]]),
                 name=names[i],
             )
         )
 
     wend_diurnal_cycle_fig.update_layout(
-            title="Profile journalier en weekend",
+            title="Profil journalier en week-end",
             title_x=0.5,
             xaxis=dict(
                 tick0=week_diurnal_cycle_data.index[1],
@@ -416,8 +476,9 @@ def build_graphs(
             go.Box(
                 y=graph_data[col],
                 name=names[i],
-                boxpoints='all',
-                boxmean='sd'
+                line=dict(color=COLORS['lines'][source_select[i]]),
+                # boxpoints='all',
+                # boxmean='sd'
             )
         )
     if polluant in ['PM10', 'PM2.5']:
@@ -446,7 +507,10 @@ def build_graphs(
     fig_boxplot.update_layout(
         title=graph_title('boxplot', aggregation, polluant),
         title_x=0.5,
-        yaxis_title=f"{polluant} {UNITS[polluant]}",
+        yaxis=dict(
+            title=f"{polluant} {UNITS[polluant]}",
+            # tickvals=ytick_vals,
+        ),
         xaxis_title='',
         xaxis2_showticklabels=False,
         showlegend=False,
@@ -456,7 +520,8 @@ def build_graphs(
                 r=0,
                 t=25,
             ),
-        yaxis_range=[0, y_max+y_max*.05]
+        yaxis_range=[0, 100]
+        # yaxis_range=[0, y_max+y_max*.05]
 
     )
 
@@ -486,6 +551,49 @@ def build_graphs(
                 t=25,
             )
     )
+
+    # ---------------------------------------------------
+    #                       MAP
+    # ---------------------------------------------------
+    # gdf = get_geoDF(
+    #     nom_capteur=cap_name,
+    #     nom_station=station_name,
+    # )
+
+    # fig_map = go.Figure(layout=dict(height=600, width=800))
+
+    # zoom, center = get_zoom_level_and_center(
+    #     longitudes=gdf['lon'].values,
+    #     latitudes=gdf['lat'].values
+    # )
+
+    # for i in gdf.index:
+    #     fig_map.add_trace(
+    #         go.Scattermapbox(
+    #             lat=[gdf.geometry.y[i]],
+    #             lon=[gdf.geometry.x[i]],
+    #             name=f'{gdf['site_name'].values[i]}',
+    #             mode='markers',
+    #             marker=dict(
+    #                 size=15,
+    #                 color=COLORS['markers'][source_select[i]]
+    #             ),
+    #         )
+    #     )
+
+    # fig_map.update_layout(
+    #     mapbox_style="open-street-map",
+    #     mapbox_zoom=zoom,
+    #     mapbox_center=dict(
+    #         lon=center[0],
+    #         lat=center[1]
+    #         ),
+    #     autosize=True,
+    #     margin=dict(t=0, b=0, l=5, r=0),
+    #     )
+
+    # fig_map.write_image('./assets/map.png')
+
     # ---------------------------------------------------
     #         SEUILS DE REFERENCE INFO
     # ---------------------------------------------------
@@ -493,30 +601,51 @@ def build_graphs(
         count_seuil_information,
         count_seuil_alert,
         moyenne_periode,
+        min_periode,
+        max_periode,
         seuil_information,
         seuil_alert,
     ) = get_stats(
-        data=day_data,
+        minmax_data=hour_data,
+        day_data=day_data,
         poll=polluant
         )
     names = html.P([
         html.Br(),
         html.Br(),
-        html.B([html.B('Microcapteur'), html.H5(f'{cap_name}:')]),
-        html.B([html.B('Station Référence.'), html.H5(f'{station_name}:')])
+        html.Br(),
+        html.Br(),
+        html.B([html.B('Microcapteur'), html.H3(f'{cap_name}:')]),
+        html.Br(),
+        html.B([html.B('Station Référence.'), html.H3(f'{station_name}:')]),
     ])
     p1 = html.P([
         html.Center([
-                html.Br(),
                 html.B('Moyenne de '),
-                html.B('la période :')
+                html.B('la période :'), html.Br(),
+                html.B('µg/m³')
                 ]),
         html.Br(),
-        html.Center(html.H3(f' {moyenne_periode[0]:.2f}')),
-        html.Center(html.H3(f' {moyenne_periode[1]:.2f}'))
-
+        html.Hr(),
+        html.Center(html.H3(f' {moyenne_periode[0]:.0f}')),
+        html.Hr(),
+        html.Center(html.H3(f' {moyenne_periode[1]:.0f}')),
+        html.Hr(),
     ])
     p2 = html.P([
+        html.Center([
+                html.B('Min / Max horaire:'), html.Br(),
+                html.B('µg/m³')
+                ]),
+        html.Br(),
+        html.Hr(),
+        html.Center(html.H3(f' {min_periode[0]:.0f} / {max_periode[0]:.0f}')),
+        html.Hr(),
+        html.Center(html.H3(f' {min_periode[1]:.0f} / {max_periode[1]:.0f}')),
+
+        html.Hr(),
+    ])
+    p3 = html.P([
         html.Center([
                 html.B('Nombre de dépassements '),
                 html.B("du seuil d'information:"),
@@ -524,10 +653,13 @@ def build_graphs(
                 html.B(f'({seuil_information} µg/m³ en moyenne sur 24h)'),
                 ]),
         html.Br(),
+        html.Hr(),
         html.Center(html.H3(f'{count_seuil_information[0]}')),
-        html.Center(html.H3(f' {count_seuil_information[1]}'))
+        html.Hr(),
+        html.Center(html.H3(f' {count_seuil_information[1]}')),
+        html.Hr(),
     ])
-    p3 = html.P([
+    p4 = html.P([
         html.Center([
                 html.B('Nombre de dépassements'),
                 html.B(" du seuil d'alerte:"),
@@ -535,8 +667,11 @@ def build_graphs(
                 html.B(f'({seuil_alert} µg/m³ en moyenne sur 24h)')
                 ]),
         html.Br(),
+        html.Hr(),
         html.Center(html.H3(f'{count_seuil_alert[0]}')),
-        html.Center(html.H3(f'{count_seuil_alert[1]}'))
+        html.Hr(),
+        html.Center(html.H3(f'{count_seuil_alert[1]}')),
+        html.Hr(),
     ])
 
     return (
@@ -544,11 +679,11 @@ def build_graphs(
         week_diurnal_cycle_fig,
         wend_diurnal_cycle_fig,
         fig_boxplot,
-        # fig_scatterplot,
         names,
         p1,
         p2,
         p3,
+        p4
         )
 
 
@@ -572,12 +707,12 @@ def get_micro_capteur_info(nom_site: str):
         html.H6(f"{json_data['nom_site'].values[0]}"),
         # html.B("type_site:"),
         # html.H6(f"{json_data['type_site'].values[0]}"),
-        html.B("influence: "),
+        html.B("Influence: "),
         html.H6(f"{json_data['influence'].values[0]}"),
         html.B("Longitude: "),
-        html.H6(f"{json_data['lon'].values[0]}"),
+        html.H6(f"{json_data['lon'].values[0]: 0.4f}"),
         html.B("Latitude: "),
-        html.H6(f"{json_data['lat'].values[0]}"),
+        html.H6(f"{json_data['lat'].values[0]: 0.4f}"),
         # html.B("date_debut_site: "),
         # html.H6(f"{json_data['date_debut_site'].values[0].split('T')[0]}"),
         # html.B("date_fin_site: "),
@@ -619,9 +754,8 @@ def get_station_info(nom_site: str):
         html.B("Influence: "),
         html.H6(f"{json_data['locationTypeLabel'].values[0]}"),
         html.B("Longitude: "),
-        html.H6(f"{json_data['longitude'].values[0]}"),
-        html.B("Latitude: "),
-        html.H6(f"{json_data['latitude'].values[0]}"),
+        html.H6(f"{json_data['longitude'].values[0]: 0.4f}"),
+        html.H6(f"{json_data['latitude'].values[0]: 0.4f}"),
         # html.B("date_debut_site: "),
         # html.H6(f"{str(json_data['startDate'].values[0]).split('T')[0]}"),
         # html.B("date_fin_site: "),

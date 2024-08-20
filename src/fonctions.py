@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
+import geopandas as gp
 from src.glob_vars import SEUILS
+from src.routines.micro_capteurs import request_api_observations
+from src.routines.xair import request_xr
 
 
 def list_of_strings(arg):
@@ -41,7 +44,7 @@ def weekday_profile(
                 axis=1
             )
         datime_format = '%H'
-    
+
     if aggregation == 'journalière':
         for col in ['valeur_ref', 'value']:
             grouped_data = days_data[[index, col]].groupby(
@@ -75,29 +78,35 @@ def get_max(
 
 
 def get_stats(
-        data: pd.DataFrame,
+        minmax_data: pd.DataFrame,
+        day_data: pd.DataFrame,
         poll: str,
 ):
     seuil_information = SEUILS[poll]['FR']['seuil_information']
     seuil_alert = SEUILS[poll]['FR']['seuil_alerte']
 
-    if poll == 'PM10':
-
-        moyenne_periode = data.mean()
+    if poll in ['PM10', 'PM2.5']:
+        moyenne_periode = round(day_data.mean())
+        min_periode = round(minmax_data.min())
+        max_periode = round(minmax_data.max())
+        if moyenne_periode.isna().all():
+            for i in range(1):
+                moyenne_periode[i] = 0
+                min_periode[i] = 0
+                max_periode[i] = 0
 
         count_seuil_information = (
-            data[data > seuil_information]
-
+            day_data[day_data > seuil_information]
             .count()
             )
 
         count_seuil_alert = (
-            data[data > seuil_alert]
+            day_data[day_data > seuil_alert]
             .count()
             )
 
     else:
-        moyenne_periode = data.mean()
+        moyenne_periode = day_data.mean()
 
         count_seuil_information = 'N/A'
 
@@ -107,6 +116,8 @@ def get_stats(
         count_seuil_information,
         count_seuil_alert,
         moyenne_periode,
+        min_periode,
+        max_periode,
         seuil_information,
         seuil_alert,
     )
@@ -146,3 +157,111 @@ def graph_title(
         if aggregation == 'journalière':
             title = f"Distribution des concentrations journalièrs en {polluant}"
     return title
+
+
+def validate_and_aggregate(
+        data: pd.DataFrame,
+        threshold: int = 0.75,
+):
+    data['data_coverage'] = (~np.isnan(data['valeur_ref'])).astype(int)
+
+    hour_data = data.resample('H').mean()
+    hour_data.loc[
+        hour_data['data_coverage'] < threshold, ['valeur_ref', 'value']
+        ] = np.nan
+    hour_data.drop(['data_coverage'], axis=1, inplace=True)
+
+    day_data = data.resample('D').mean()
+    day_data.loc[
+        day_data['data_coverage'] < threshold, ['valeur_ref', 'value']
+        ] = np.nan
+    day_data.drop(['data_coverage'], axis=1, inplace=True)
+
+    data.drop(['data_coverage'], axis=1, inplace=True)
+    return (hour_data, day_data)
+
+
+def get_geoDF(
+        nom_capteur: str,
+        nom_station: str,
+):
+    capteur_json = request_api_observations(
+        folder_key='sites',
+        nom_site=nom_capteur.split(" - ")[0],
+        format='json',
+        download='false',
+    )
+
+    station_json = request_xr(
+        folder='sites',
+        sites=nom_station,
+    )
+    df = pd.DataFrame(
+        data={
+            'site_name': [
+                capteur_json['nom_site'].values[0],
+                station_json['labelSite'].values[0],
+                ],
+            'lon': [
+                capteur_json['lon'].values[0],
+                station_json['longitude'].values[0],
+                ],
+            'lat': [
+                capteur_json['lat'].values[0],
+                station_json['latitude'].values[0],
+                ]
+        }
+    )
+
+    gdf = gp.GeoDataFrame(
+        df,
+        geometry=gp.points_from_xy(
+            df.lon,
+            df.lat
+        ),
+        crs="EPSG:3857",
+    )
+
+    return gdf
+
+
+def get_zoom_level_and_center(longitudes=None, latitudes=None):
+        """Function documentation:\n
+        Basic framework adopted from Krichardson under the following thread:
+        https://community.plotly.com/t/dynamic-zoom-for-mapbox/32658/7
+
+        # NOTE:
+        # THIS IS A TEMPORARY SOLUTION UNTIL THE DASH TEAM IMPLEMENTS DYNAMIC ZOOM
+        # in their plotly-functions associated with mapbox, such as go.Densitymapbox() etc.
+
+        Returns the appropriate zoom-level for these plotly-mapbox-graphics along with
+        the center coordinate tuple of all provided coordinate tuples.
+        """
+
+        if ((latitudes is None or longitudes is None)
+                or (len(latitudes) != len(longitudes))):
+            return 0, (0, 0)
+
+        # Get the boundary-box 
+        b_box = {} 
+        b_box['height'] = latitudes.max()-latitudes.min()
+        b_box['width'] = longitudes.max()-longitudes.min()
+        b_box['center'] = (np.mean(longitudes), np.mean(latitudes))
+
+        # get the area of the bounding box in order to calculate a zoom-level
+        area = (b_box['height']*1.5) * (b_box['width']*1.5)
+
+        # * 1D-linear interpolation with numpy:
+        # - Pass the area as the only x-value and not as a list, in order to return a scalar as well
+        # - The x-points "xp" should be in parts in comparable order of magnitude of the given area
+        # - The zpom-levels are adapted to the areas, i.e. start with the smallest area possible of 0
+        # which leads to the highest possible zoom value 20, and so forth decreasing with increasing areas
+        # as these variables are antiproportional
+        zoom = np.interp(
+            x=area,
+            xp=[0, 6**-10, 5**-10, 4**-10, 3**-10, 2**-10, 1**-10, 1**-5],
+            fp=[24, 20, 15,    14,     13,     12,     7,      5]
+            )
+
+        # Finally, return the zoom level and the associated boundary-box center coordinates
+        return zoom, b_box['center']

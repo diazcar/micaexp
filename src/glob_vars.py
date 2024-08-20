@@ -12,6 +12,17 @@ UNITS = {
     'PM2.5': 'µg/m³',
     'PM1': 'µg/m³',
 }
+
+COLORS = {
+    'lines': {
+        'capteur': '#FBB911',  # R : 251 V : 185 B : 17
+        'station': 'blue',
+    },
+    'markers': {
+        'capteur': '#FBB911',  # R : 251 V : 185 B : 17
+        'station': 'blue',
+    },
+}
 SEUILS = {
     'PM10': {
         'FR': {

@@ -90,7 +90,7 @@ def get_sidebar():
                 [
                     dcc.Dropdown(
                         options=CAPTEUR_SITE_LIST,
-                        value=CAPTEUR_SITE_LIST[0],
+                        value='Meyreuil_Mairie - 1037 (77)',
                         id="micro_capteur_sites_dropdown",
                         className='dropUp',
                         style={
@@ -121,6 +121,7 @@ def get_sidebar():
             html.Hr(),
             html.H4(html.B("Station AtmoSud")),
             html.H6(id='station_info'),
+            # html.Img(src="assets/boxplot_description.png"),
         ],
         style=SIDEBAR_STYLE,
     )
