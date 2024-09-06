@@ -242,7 +242,8 @@ def build_graphs(
         ),
         id_variable=ISO[polluant],
         nb_dec=4,
-        aggregation='quart-horaire'
+        aggregation='quart-horaire',
+        valeur_brute=True
     )
     graph_capteur_data = capteur_data[capteur_data.variable == polluant]
 

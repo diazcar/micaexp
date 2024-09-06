@@ -14,7 +14,7 @@ app.layout = html.Div(
             #         "width": "100%",
             #         "color": "#17BECF",
             #         }
-                # ),
+            # ),
             ]
     )
 

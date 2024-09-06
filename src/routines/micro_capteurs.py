@@ -109,7 +109,8 @@ def request_api_observations(
         id_capteur: int = None,
         id_variable: str = None,
         aggregation: str = 'horaire',
-        nb_dec: int = None
+        nb_dec: int = None,
+        valeur_brute: int = False
 ) -> pd.DataFrame:
 
     if folder_key == 'sites':
@@ -136,7 +137,8 @@ def request_api_observations(
                 f"format={format}&",
                 f"download={download}&",
                 f"aggregation={aggregation}&",
-                f"nb_dec={nb_dec}&"
+                f"nb_dec={nb_dec}&",
+                f"valeur_brute={valeur_brute}"
             ]
         )
 
