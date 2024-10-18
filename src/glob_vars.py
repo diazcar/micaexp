@@ -1,7 +1,7 @@
 import datetime as dt
 import pandas as pd
 
-TIME_NOW = dt.datetime.now()
+TIME_NOW = dt.datetime.today()
 
 PHYSICALS = pd.read_csv(
             "./data/physicals.csv"

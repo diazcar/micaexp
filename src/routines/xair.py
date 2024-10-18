@@ -179,7 +179,7 @@ def format_time_for_xair(
 
 
 def time_window(
-        format_str: str = None,
+        format: str = None,
         date: str = None,
 
         ):
@@ -190,7 +190,7 @@ def time_window(
     if date:
         time_now = dt.datetime.strptime(date, format)
     else:
-        time_now = dt.datetime.now()
+        time_now = dt.datetime.today()
 
     end_time = dt.datetime.combine(
         time_now,
@@ -202,10 +202,10 @@ def time_window(
         dt.datetime.min.time()
         )
 
-    if format_str:
+    if format:
         return (
-            start_time.strftime(format=format_str),
-            end_time.strftime(format=format_str)
+            start_time.strftime(format=format),
+            end_time.strftime(format=format)
             )
     else:
         return (
@@ -223,7 +223,6 @@ def request_xr(
     sites: str = "",
     measures: str = "",
     physicals: str = "",
-    header_for_df: list = None
 ) -> pd.DataFrame:
     """
     Get json objects from XR rest api
@@ -264,6 +263,7 @@ def request_xr(
         f"measures={measures}&"
         f"physicals={physicals}&"
     )
+    print(url)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
 

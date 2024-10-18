@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import geopandas as gp
 from src.glob_vars import SEUILS
-from src.routines.micro_capteurs import request_api_observations
-from src.routines.xair import request_xr
+from src.routines.microspot_api import request_microspot
+from src.routines.xair import ISO, request_xr
 
 
 def list_of_strings(arg):
@@ -24,7 +24,7 @@ def weekday_profile(
 
     out_data = pd.DataFrame()
     if aggregation == 'quart-horaire':
-        for col in ['valeur_ref', 'value']:
+        for col in ['valueRaw', 'value']:
             grouped_data = days_data[[index, col]].groupby(
                 days_data[index].dt.time
                 ).mean().drop([index], axis=1)
@@ -35,7 +35,7 @@ def weekday_profile(
         datime_format = '%H:%M:%S'
 
     if aggregation == 'horaire':
-        for col in ['valeur_ref', 'value']:
+        for col in ['valueRaw', 'value']:
             grouped_data = days_data[[index, col]].groupby(
                 days_data[index].dt.hour
                 ).mean().drop([index], axis=1)
@@ -46,7 +46,7 @@ def weekday_profile(
         datime_format = '%H'
 
     if aggregation == 'journalière':
-        for col in ['valeur_ref', 'value']:
+        for col in ['valueRaw', 'value']:
             grouped_data = days_data[[index, col]].groupby(
                 days_data[index].dt.day
                 ).mean().drop([index], axis=1)
@@ -106,10 +106,10 @@ def get_stats(
             )
 
     else:
-        moyenne_periode = day_data.mean()
-
+        moyenne_periode = round(day_data.mean())
+        min_periode = round(minmax_data.min())
+        max_periode = round(minmax_data.max())
         count_seuil_information = 'N/A'
-
         count_seuil_alert = 'N/A'
 
     return (
@@ -163,33 +163,38 @@ def validate_and_aggregate(
         data: pd.DataFrame,
         threshold: int = 0.75,
 ):
-    data['data_coverage'] = (~np.isnan(data['valeur_ref'])).astype(int)
+    data['data_coverage'] = (~np.isnan(data['valueRaw'])).astype(int)
 
     hour_data = data.resample('H').mean()
     hour_data.loc[
-        hour_data['data_coverage'] < threshold, ['valeur_ref', 'value']
+        hour_data['data_coverage'] < threshold, ['valueRaw', 'value']
         ] = np.nan
     hour_data.drop(['data_coverage'], axis=1, inplace=True)
 
     day_data = data.resample('D').mean()
     day_data.loc[
-        day_data['data_coverage'] < threshold, ['valeur_ref', 'value']
+        day_data['data_coverage'] < threshold, ['valueRaw', 'value']
         ] = np.nan
     day_data.drop(['data_coverage'], axis=1, inplace=True)
 
     data.drop(['data_coverage'], axis=1, inplace=True)
+
     return (hour_data, day_data)
 
 
 def get_geoDF(
-        nom_capteur: str,
+        id_capteur: str,
+        polluant: str,
+        start_date: str,
+        end_date: str,
         nom_station: str,
 ):
-    capteur_json = request_api_observations(
-        folder_key='sites',
-        nom_site=nom_capteur.split(" - ")[0],
-        format='json',
-        download='false',
+
+    capteur_data = request_microspot(
+        observationTypeCodes=[ISO[polluant]],
+        devices=[id_capteur],
+        aggregation="1 h",
+        dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
     )
 
     station_json = request_xr(
@@ -199,15 +204,15 @@ def get_geoDF(
     df = pd.DataFrame(
         data={
             'site_name': [
-                capteur_json['nom_site'].values[0],
+                capteur_data['site_name'].values[0],
                 station_json['labelSite'].values[0],
                 ],
             'lon': [
-                capteur_json['lon'].values[0],
+                capteur_data['site_lon'].values[0],
                 station_json['longitude'].values[0],
                 ],
             'lat': [
-                capteur_json['lat'].values[0],
+                capteur_data['site_lat'].values[0],
                 station_json['latitude'].values[0],
                 ]
         }
@@ -265,3 +270,11 @@ def get_zoom_level_and_center(longitudes=None, latitudes=None):
 
         # Finally, return the zoom level and the associated boundary-box center coordinates
         return zoom, b_box['center']
+
+
+def save_dataframes(
+        dataframe_list: list[pd.DataFrame],
+        path: str
+):
+    for i, df in enumerate(dataframe_list):
+        df.to_csv(f"{path}/data{i}.csv")

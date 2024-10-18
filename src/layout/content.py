@@ -1,22 +1,26 @@
-import base64
-import io
+from dotenv import load_dotenv
 from dash import html, dcc, Input, Output
 import dash_bootstrap_components as dbc
 import pandas as pd
-import geopandas as gp
-import datetime as dt
 from plotly import graph_objects as go
 import numpy as np
-from src.fonctions import clean_outlayers, get_geoDF, get_max, get_stats, get_zoom_level_and_center, graph_title, validate_and_aggregate, weekday_profile
+from src.fonctions import (
+    get_geoDF,
+    get_max,
+    get_stats,
+    get_zoom_level_and_center,
+    graph_title,
+    save_dataframes,
+    validate_and_aggregate,
+    weekday_profile
+)
 from src.glob_vars import COLORS, SEUILS, UNITS
 from src.layout.styles import CONTENT_STYLE
 from maindash import app
-from src.routines.micro_capteurs import (
-    ISO,
-    get_site_info,
-    request_api_observations,
-)
-from src.routines.xair import request_xr, wrap_xair_request
+from src.routines.microspot_api import request_microspot
+from src.routines.xair import request_xr, wrap_xair_request, ISO
+
+load_dotenv()
 
 
 def get_content():
@@ -71,20 +75,29 @@ def get_content():
                             height='30vh'
                             )
                         )
-                    ], width=12),
-                ]),
-            html.Br(),
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(
-                        figure={},
-                        id="diurnal_cycle_weekend",
-                        style=dict(
-                            height='30vh'
+                    ], width=6),
+                    dbc.Col([
+                        dcc.Graph(
+                            figure={},
+                            id="diurnal_cycle_weekend",
+                            style=dict(
+                                height='30vh'
+                                )
                             )
-                        )
-                    ], width=12),
-                ]),
+                        ], width=6),
+                    ]),
+            html.Br(),
+            # dbc.Row([
+            #     dbc.Col([
+            #         dcc.Graph(
+            #             figure={},
+            #             id="diurnal_cycle_weekend",
+            #             style=dict(
+            #                 height='30vh'
+            #                 )
+            #             )
+            #         ], width=12),
+            #     ]),
             html.Br(),
             dbc.Row([
                 dbc.Col([
@@ -96,12 +109,6 @@ def get_content():
                     dcc.Graph(figure={}, id="boxplot"),
                     ], width=7),
                 dbc.Col([
-                    # html.Img(
-                        # id='map_image',
-                        # # src="assets/map.png",
-                        # style=dict(height='70%', widht='70%')
-
-                        # )
                     dcc.Graph(figure={}, id="map"),
                     ], width=5),
             ]),
@@ -113,7 +120,7 @@ def get_content():
 
             html.H6(
                 [
-                    html.B("Seuil d’information "), "- Niveau de concentration sur 24h au delà duquel des informations sont diffusées aux personnes sensibles", html.Br(),
+                    html.B("Seuil d’information "),"- Niveau de concentration sur 24h au delà duquel des informations sont diffusées aux personnes sensibles", html.Br(),
                     html.B("Seuil d’alerte "),	"- Niveau de concentration sur 24h au delà duquel il y a un risque pour la santé justifiant de mesures d'urgence", html.Br(),
                     html.B("Ligne directrice (LD) "),	"- Valeur recommandée par l'Organisation Mondiale de la Santé", html.Br(),
                     html.B("Valeur cible (VC) "),	"- Niveau de concentration à atteindre dans un délai donné", html.Br(),
@@ -145,30 +152,39 @@ def build_title(microcapteur: str, poll: str):
         # Output('map_img', 'src'),
         Output('map', 'figure'),
         Input('micro_capteur_sites_dropdown', 'value'),
+        Input('polluant_dropdown', 'value'),
+        Input('my-date-picker-range', 'start_date'),
+        Input('my-date-picker-range', 'end_date'),
         Input('station_xair_dropdown', 'value'),
 )
 def generate_map(
     site_plus_capteur: str,
+    polluant: str,
+    start_date: str,
+    end_date: str,
     station_name: str
 ):
-    cap_name = site_plus_capteur.split(" - ")[0]
+    cap_name, cap_id = site_plus_capteur.split(" - ")
     source_select = ['capteur', 'station']
     names = [cap_name, station_name]
     # ---------------------------------------------------
     #                       MAP
     # ---------------------------------------------------
     gdf = get_geoDF(
-        nom_capteur=cap_name,
+        id_capteur=int(cap_id),
+        polluant=polluant,
+        start_date=start_date,
+        end_date=end_date,
         nom_station=station_name,
     )
 
     fig_map = go.Figure(layout=dict(height=600, width=800))
 
-    zoom, center = get_zoom_level_and_center(
-        longitudes=gdf['lon'].values,
-        latitudes=gdf['lat'].values
-    )
-    print(zoom)
+    # zoom, center = get_zoom_level_and_center(
+    #     longitudes=gdf['lon'].values,
+    #     latitudes=gdf['lat'].values
+    # )
+
     for i in gdf.index:
         fig_map.add_trace(
             go.Scattermapbox(
@@ -185,19 +201,12 @@ def generate_map(
 
     fig_map.update_layout(
         mapbox_style="open-street-map",
-        mapbox_zoom=zoom,
-        mapbox_center=dict(
-            lon=center[0],
-            lat=center[1]
-            ),
+        mapbox_zoom=6.5,
+        mapbox_center=dict(lon=6, lat=44),  # dict( lon=center[0], lat=center[1]),
         autosize=True,
         margin=dict(t=0, b=0, l=5, r=0),
         )
 
-    # img = io.BytesIO()
-    # fig_svg = fig_map.to_svg(format='svg')
-    # img.write(fig_svg)
-    # img_out = 'data:image/png;base64,' + base64.b64encode(img).decode('utf-8')
     return fig_map
 
 
@@ -231,27 +240,14 @@ def build_graphs(
     #####################################################
     #                 GET DATA                          #
     #####################################################
-    capteur_data = request_api_observations(
-        folder_key='mesures',
-        start_date=start_date,
-        end_date=end_date,
-        id_site=get_site_info(
-            col_key="site_plus_capteur",
-            search_key=site_plus_capteur,
-            col_target='id_site'
-        ),
-        id_variable=ISO[polluant],
-        nb_dec=4,
-        aggregation='quart-horaire',
-        valeur_brute=True
+    capteur_data = request_microspot(
+        observationTypeCodes=[ISO[polluant]],
+        devices=[int(site_plus_capteur.split(" - ")[1])],
+        aggregation="15 m",
+        dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
     )
-    graph_capteur_data = capteur_data[capteur_data.variable == polluant]
 
-    # graph_capteur_data['rolling_mean'] = (
-    #     graph_capteur_data['valeur_ref']
-    #     .rolling(window=24, min_periods=1)
-    #     .mean()
-    #     )
+    graph_capteur_data = capteur_data[capteur_data.isoCode == ISO[polluant]]
 
     station_data = wrap_xair_request(
             fromtime=start_date,
@@ -277,13 +273,15 @@ def build_graphs(
     # Graphs datas
     # ---------------------------------------
     data = pd.concat(
-        [graph_capteur_data['valeur_ref'], station_data['value']],
+        [graph_capteur_data['valueRaw'], station_data['value']],
         axis=1,
     )
     data.index.name = 'date'
 
     hour_data, day_data = validate_and_aggregate(data)
     quart_data = data.copy(deep=True)
+
+    save_dataframes([hour_data, day_data, quart_data], path="./notebook")
 
     if aggregation == 'quart-horaire':
         graph_data = quart_data
@@ -534,7 +532,7 @@ def build_graphs(
     fig_scatterplot.add_trace(
         go.Scatter(
             x=quart_data['value'],
-            y=quart_data['valeur_ref'],
+            y=quart_data['valueRaw'],
             mode='markers',
             marker_color='purple',
             )
@@ -552,48 +550,6 @@ def build_graphs(
                 t=25,
             )
     )
-
-    # ---------------------------------------------------
-    #                       MAP
-    # ---------------------------------------------------
-    # gdf = get_geoDF(
-    #     nom_capteur=cap_name,
-    #     nom_station=station_name,
-    # )
-
-    # fig_map = go.Figure(layout=dict(height=600, width=800))
-
-    # zoom, center = get_zoom_level_and_center(
-    #     longitudes=gdf['lon'].values,
-    #     latitudes=gdf['lat'].values
-    # )
-
-    # for i in gdf.index:
-    #     fig_map.add_trace(
-    #         go.Scattermapbox(
-    #             lat=[gdf.geometry.y[i]],
-    #             lon=[gdf.geometry.x[i]],
-    #             name=f'{gdf['site_name'].values[i]}',
-    #             mode='markers',
-    #             marker=dict(
-    #                 size=15,
-    #                 color=COLORS['markers'][source_select[i]]
-    #             ),
-    #         )
-    #     )
-
-    # fig_map.update_layout(
-    #     mapbox_style="open-street-map",
-    #     mapbox_zoom=zoom,
-    #     mapbox_center=dict(
-    #         lon=center[0],
-    #         lat=center[1]
-    #         ),
-    #     autosize=True,
-    #     margin=dict(t=0, b=0, l=5, r=0),
-    #     )
-
-    # fig_map.write_image('./assets/map.png')
 
     # ---------------------------------------------------
     #         SEUILS DE REFERENCE INFO
@@ -693,45 +649,45 @@ def build_graphs(
     Input('micro_capteur_sites_dropdown', 'value'),
 )
 def get_micro_capteur_info(nom_site: str):
+    return None
+    # json_data = request_api_observations(
+    #     folder_key='sites',
+    #     nom_site=nom_site.split(" - ")[0],
+    #     format='json',
+    #     download='false',
+    # )
 
-    json_data = request_api_observations(
-        folder_key='sites',
-        nom_site=nom_site.split(" - ")[0],
-        format='json',
-        download='false',
-    )
-
-    return html.P([
-        # html.B("id_site: "),
-        # html.H6(f"{json_data['id_site'].values[0]}"),
-        html.B("Nom du site: "),
-        html.H6(f"{json_data['nom_site'].values[0]}"),
-        # html.B("type_site:"),
-        # html.H6(f"{json_data['type_site'].values[0]}"),
-        html.B("Influence: "),
-        html.H6(f"{json_data['influence'].values[0]}"),
-        html.B("Longitude: "),
-        html.H6(f"{json_data['lon'].values[0]: 0.4f}"),
-        html.B("Latitude: "),
-        html.H6(f"{json_data['lat'].values[0]: 0.4f}"),
-        # html.B("date_debut_site: "),
-        # html.H6(f"{json_data['date_debut_site'].values[0].split('T')[0]}"),
-        # html.B("date_fin_site: "),
-        # html.H6(f"{json_data['date_fin_site'].values[0].split('T')[0]}"),
-        # html.B("ID campagne: "),
-        # html.H6(f"{json_data['id_campagne'].values[0]}"),
-        html.B("Nom campagne: "),
-        html.H6(f"{json_data['nom_campagne'].values[0]}"),
-        # html.B("ID capteur: "),
-        # html.H6(f"{json_data['id_capteur'].values[0]}"),
-        html.B("Marque capteur: "),
-        html.H6(f"{json_data['marque_capteur'].values[0]}"),
-        # html.B("Modele capteur : "),
-        # html.H6(f"{json_data['modele_capteur'].values[0]}"),
-        html.B("Variables: "),
-        html.H6("PM10, PM2.5 et PM1"),
-        ]
-    )
+    # return html.P([
+    #     # html.B("id_site: "),
+    #     # html.H6(f"{json_data['id_site'].values[0]}"),
+    #     html.B("Nom du site: "),
+    #     html.H6(f"{json_data['nom_site'].values[0]}"),
+    #     # html.B("type_site:"),
+    #     # html.H6(f"{json_data['type_site'].values[0]}"),
+    #     html.B("Influence: "),
+    #     html.H6(f"{json_data['influence'].values[0]}"),
+    #     html.B("Longitude: "),
+    #     html.H6(f"{json_data['lon'].values[0]: 0.4f}"),
+    #     html.B("Latitude: "),
+    #     html.H6(f"{json_data['lat'].values[0]: 0.4f}"),
+    #     # html.B("date_debut_site: "),
+    #     # html.H6(f"{json_data['date_debut_site'].values[0].split('T')[0]}"),
+    #     # html.B("date_fin_site: "),
+    #     # html.H6(f"{json_data['date_fin_site'].values[0].split('T')[0]}"),
+    #     # html.B("ID campagne: "),
+    #     # html.H6(f"{json_data['id_campagne'].values[0]}"),
+    #     html.B("Nom campagne: "),
+    #     html.H6(f"{json_data['nom_campagne'].values[0]}"),
+    #     # html.B("ID capteur: "),
+    #     # html.H6(f"{json_data['id_capteur'].values[0]}"),
+    #     html.B("Marque capteur: "),
+    #     html.H6(f"{json_data['marque_capteur'].values[0]}"),
+    #     # html.B("Modele capteur : "),
+    #     # html.H6(f"{json_data['modele_capteur'].values[0]}"),
+    #     html.B("Variables: "),
+    #     html.H6("PM10, PM2.5 et PM1"),
+    #     ]
+    # )
 
 
 @app.callback(
@@ -745,29 +701,30 @@ def get_station_info(nom_site: str):
         sites=nom_site,
     )
 
-    return html.P([
-        # html.B("id_site:"),
-        # html.H6(f"{json_data['id'].values[0]}"),
-        html.B("Nom site: "),
-        html.H6(f"{json_data['labelSite'].values[0]}"),
-        # html.B("type_site: "),
-        # html.H6("Fixe"),
-        html.B("Influence: "),
-        html.H6(f"{json_data['locationTypeLabel'].values[0]}"),
-        html.B("Longitude: "),
-        html.H6(f"{json_data['longitude'].values[0]: 0.4f}"),
-        html.H6(f"{json_data['latitude'].values[0]: 0.4f}"),
-        # html.B("date_debut_site: "),
-        # html.H6(f"{str(json_data['startDate'].values[0]).split('T')[0]}"),
-        # html.B("date_fin_site: "),
-        # html.H6(f"{str(json_data['stopDate'].values[0]).split('T')[0]}"),
-        html.B("Department: "),
-        html.H6(f"{json_data['labelDepartment'].values[0]}"),
-        html.B("Commune: "),
-        html.H6(f"{json_data['labelCommune'].values[0]}"),
-        html.B("Environment: "),
-        html.H6(f"{json_data['classTypeLabel'].values[0]}"),
-        html.B("Activité de la Zone: "),
-        html.H6(f"{json_data['zoneOfActivityLabel'].values[0]}"),
-        ]
-    )
+    return None
+    # return html.P([
+    #     # html.B("id_site:"),
+    #     # html.H6(f"{json_data['id'].values[0]}"),
+    #     html.B("Nom site: "),
+    #     html.H6(f"{json_data['labelSite'].values[0]}"),
+    #     # html.B("type_site: "),
+    #     # html.H6("Fixe"),
+    #     html.B("Influence: "),
+    #     # html.H6(f"{json_data['locationTypeLabel'].values[0]}"),
+    #     html.B("Longitude: "),
+    #     html.H6(f"{json_data['longitude'].values[0]: 0.4f}"),
+    #     html.H6(f"{json_data['latitude'].values[0]: 0.4f}"),
+    #     # html.B("date_debut_site: "),
+    #     # html.H6(f"{str(json_data['startDate'].values[0]).split('T')[0]}"),
+    #     # html.B("date_fin_site: "),
+    #     # html.H6(f"{str(json_data['stopDate'].values[0]).split('T')[0]}"),
+    #     html.B("Department: "),
+    #     html.H6(f"{json_data['labelDepartment'].values[0]}"),
+    #     html.B("Commune: "),
+    #     html.H6(f"{json_data['labelCommune'].values[0]}"),
+    #     html.B("Environment: "),
+    #     # html.H6(f"{json_data['classTypeLabel'].values[0]}"),
+    #     html.B("Activité de la Zone: "),
+    #     # html.H6(f"{json_data['zoneOfActivityLabel'].values[0]}"),
+    #     ]
+    # )
