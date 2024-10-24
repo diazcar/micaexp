@@ -6,6 +6,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+DATA_AGG_DIC = {
+    'quart-horaire': '15 m',
+    'horaire': '1 h'
+}
+
 
 def add_columns_info(
     observations: pd.DataFrame,
@@ -89,16 +94,17 @@ def response_to_dataframe(
         )
     data.reset_index(inplace=True)
     data.set_index('date', inplace=True)
+
     return data
 
 
 def request_microspot(
+    aggregation: str,
     timezone: str = "Africa/Maputo",
     studies: list = [],
     campaigns: list = [],
     observationTypeCodes: list = ["24"],
     devices: list[int] = [],
-    aggregation: str = "15 m",
     dateRange: list = [
         "2024-01-01T01:00:00+00:00",
         "2024-01-30T01:00:00+00:00"
@@ -162,10 +168,9 @@ def request_microspot(
         "campaigns": campaigns,
         "observationTypeCodes": observationTypeCodes,
         "devices": devices,
-        "aggregation": aggregation,
+        "aggregation": DATA_AGG_DIC[aggregation],
         "dateRange": dateRange,
     }
 
     response = requests.post(url, json=json_data, headers=headers).json()
-
     return response_to_dataframe(response)

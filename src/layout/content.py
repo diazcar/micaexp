@@ -202,7 +202,7 @@ def generate_map(
     fig_map.update_layout(
         mapbox_style="open-street-map",
         mapbox_zoom=6.5,
-        mapbox_center=dict(lon=6, lat=44),  # dict( lon=center[0], lat=center[1]),
+        mapbox_center=dict(lon=6, lat=44),
         autosize=True,
         margin=dict(t=0, b=0, l=5, r=0),
         )
@@ -233,64 +233,103 @@ def build_graphs(
     site_plus_capteur: str,
     polluant: str,
     station_name: str = None,
-    aggregation: str = 'quart_horaire',
+    aggregation: str = 'quart-horaire',
 ):
     cap_name = site_plus_capteur.split(" - ")[0]
-
+    cap_id = int(site_plus_capteur.split(" - ")[1])
     #####################################################
     #                 GET DATA                          #
     #####################################################
-    capteur_data = request_microspot(
+
+    capteur_quart_data = request_microspot(
         observationTypeCodes=[ISO[polluant]],
-        devices=[int(site_plus_capteur.split(" - ")[1])],
-        aggregation="15 m",
-        dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
+        devices=[cap_id],
+        aggregation='quart-horaire',
+        dateRange=[
+            f"{start_date}T00:00:00+00:00",
+            f"{end_date}T00:00:00+00:00"
+            ],
     )
+    capteur_quart_data = capteur_quart_data[
+        capteur_quart_data.isoCode == ISO[polluant]
+        ]
 
-    graph_capteur_data = capteur_data[capteur_data.isoCode == ISO[polluant]]
+    capteur_hour_data = request_microspot(
+        observationTypeCodes=[ISO[polluant]],
+        devices=[cap_id],
+        aggregation='horaire',
+        dateRange=[
+            f"{start_date}T00:00:00+00:00",
+            f"{end_date}T00:00:00+00:00"
+            ],
+    )
+    capteur_hour_data = capteur_hour_data[
+        capteur_quart_data.isoCode == ISO[polluant]
+        ]
 
-    station_data = wrap_xair_request(
+    station_quart_data = wrap_xair_request(
             fromtime=start_date,
             totime=end_date,
             keys='data',
             sites=station_name,
             physicals=ISO[polluant],
-            datatype='base'
+            datatype='quart-horaire'
         )
-    # ----------------------------------------------------
 
-    if station_data.value.isnull().all():
-        station_name = "NO_DATA"
+    station_hour_data = wrap_xair_request(
+            fromtime=start_date,
+            totime=end_date,
+            keys='data',
+            sites=station_name,
+            physicals=ISO[polluant],
+            datatype='horaire'
+        )
 
-    # Save data to debug
-    capteur_data.to_csv("./notebook/timeseries_test.csv")
-    station_data.to_csv("./notebook/timeseries_station_test.csv")
+    hour_data = pd.concat(
+        [capteur_hour_data.valueModified, station_hour_data.value],
+        axis=1
+    )
 
-    names = [cap_name, station_name]
-    source_select = ['capteur', 'station']
+    quart_data = pd.concat(
+        [capteur_quart_data.valueRaw, station_quart_data.value],
+        axis=1,
+    )
+
+    station_value_var = 'value'
 
     # ---------------------------------------
     # Graphs datas
     # ---------------------------------------
-    data = pd.concat(
-        [graph_capteur_data['valueRaw'], station_data['value']],
-        axis=1,
-    )
-    data.index.name = 'date'
 
-    hour_data, day_data = validate_and_aggregate(data)
-    quart_data = data.copy(deep=True)
+    if aggregation == 'horaire':
+        capteur_value_var = 'valueModified'
+        graph_data = hour_data
 
-    save_dataframes([hour_data, day_data, quart_data], path="./notebook")
+    else:
+        capteur_value_var = 'valueRaw'
+        graph_data = quart_data
+
+    # ----------------------------------------------------
+    if graph_data.value.isnull().all():
+        station_name = "NO_DATA"
+
+    names = [cap_name, station_name]
+    source_select = ['capteur', 'station']
+
+    # Save data to debug
+    save_dataframes(
+        [
+            capteur_quart_data,
+            capteur_hour_data,
+            station_quart_data,
+            station_hour_data,
+            graph_data,
+        ],
+        path="./notebook")
 
     if aggregation == 'quart-horaire':
-        graph_data = quart_data
         dcycle_xticks_div = 2
     if aggregation == 'horaire':
-        graph_data = hour_data
-        dcycle_xticks_div = 1
-    if aggregation == 'journalière':
-        graph_data = day_data
         dcycle_xticks_div = 1
 
     # -------------------------------------
@@ -298,11 +337,13 @@ def build_graphs(
     # -------------------------------------
     week_diurnal_cycle_data = weekday_profile(
         aggregation=aggregation,
+        capteur_value_var=capteur_value_var,
         data=graph_data,
         week_section='workweek',
         )
     wend_diurnal_cycle_data = weekday_profile(
         aggregation=aggregation,
+        capteur_value_var=capteur_value_var,
         data=graph_data,
         week_section='weekend',
     )
@@ -531,8 +572,8 @@ def build_graphs(
 
     fig_scatterplot.add_trace(
         go.Scatter(
-            x=quart_data['value'],
-            y=quart_data['valueRaw'],
+            x=graph_data[station_value_var],
+            y=graph_data[capteur_value_var],
             mode='markers',
             marker_color='purple',
             )
@@ -563,10 +604,11 @@ def build_graphs(
         seuil_information,
         seuil_alert,
     ) = get_stats(
-        minmax_data=hour_data,
-        day_data=day_data,
+        hour_data=hour_data,
+        minmax_data=quart_data,
         poll=polluant
         )
+
     names = html.P([
         html.Br(),
         html.Br(),

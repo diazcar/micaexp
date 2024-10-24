@@ -40,11 +40,18 @@ JSON_PATH_LISTS = {
             ['unit', 'id'],
         ],
     },
-    'data': {
+    'data_base': {
         'record_path': ['sta', 'data',],
         'meta': [
             'id',
             ['sta', 'unit', 'id'],
+        ],
+    },
+    'data_hour': {
+        'record_path': ['hourly', 'data',],
+        'meta': [
+            'id',
+            ['hourly', 'unit', 'id'],
         ],
     },
     'physicals': {
@@ -76,6 +83,7 @@ HEADER_RENAME_LISTS = {
     'data': {
         'id': 'id',
         'sta.unit.id': 'unit',
+        'hourly.unit.id': 'unit',
         'value': 'value',
         'date': 'date',
         'state': 'state',
@@ -138,7 +146,7 @@ def wrap_xair_request(
         totime=totime,
         folder=DATA_KEYS['data'],
         measures=",".join(xair_site_measures['id'].to_list()),
-        datatype=datatype,
+        datatype=DATATYPES[datatype],
     )
 
     xair_data_raw['date'] = pd.to_datetime(
@@ -146,7 +154,6 @@ def wrap_xair_request(
         format="%Y-%m-%dT%H:%M:%SZ"
         )
     xair_data_raw.set_index('date', inplace=True)
-
     xair_data = mask_aorp(xair_data_raw)
 
     xair_data = mask_duplicates(
@@ -270,13 +277,32 @@ def request_xr(
         request_data = requests.get(
             url, verify=False
             ).json()[DATA_KEYS[folder]]
-        data = pd.json_normalize(
-            data=request_data,
-            record_path=JSON_PATH_LISTS[folder]['record_path'],
-            meta=JSON_PATH_LISTS[folder]['meta'])
+        
+        if folder == 'data':
+            if datatype == 'base':
+                data = pd.json_normalize(
+                    data=request_data,
+                    record_path=JSON_PATH_LISTS['data_base']['record_path'],
+                    meta=JSON_PATH_LISTS['data_base']['meta']
+                )
+            if datatype == 'hourly':
+                data = pd.json_normalize(
+                    data=request_data,
+                    record_path=JSON_PATH_LISTS['data_hour']['record_path'],
+                    meta=JSON_PATH_LISTS['data_hour']['meta']
+                )
+
+        else:
+            data = pd.json_normalize(
+                data=request_data,
+                record_path=JSON_PATH_LISTS[folder]['record_path'],
+                meta=JSON_PATH_LISTS[folder]['meta']
+                )
+
         for col in data.columns:
             if col not in list(HEADER_RENAME_LISTS[folder].keys()):
                 data[col] = np.nan
+
     return (data.rename(columns=HEADER_RENAME_LISTS[folder]))
 
 

@@ -58,7 +58,6 @@ def get_sidebar():
                         options=[
                             'quart-horaire',
                             'horaire',
-                            'journalière',
                             ],
                         value='horaire',
                         id="time_step_dropdown",
@@ -107,13 +106,13 @@ def get_sidebar():
                     )
                 ]
             ),
-            html.Hr(),
-            html.H4(html.B('Micro Capteur')),
-            html.H6(id='micro_capteur_info'),
-            html.Br(),
-            html.Hr(),
-            html.H4(html.B("Station AtmoSud")),
-            html.H6(id='station_info'),
+            # html.Hr(),
+            # html.H4(html.B('Micro Capteur')),
+            # html.H6(id='micro_capteur_info'),
+            # html.Br(),
+            # html.Hr(),
+            # html.H4(html.B("Station AtmoSud")),
+            # html.H6(id='station_info'),
             # html.Img(src="assets/boxplot_description.png"),
         ],
         style=SIDEBAR_STYLE,
@@ -155,9 +154,9 @@ def get_capteur_site_dropdown(
             f"{start_date}T00:00:00+00:00",
             f"{end_date}T00:00:00+00:00",
         ],
-        aggregation="1 h"
+        aggregation='horaire'
     )
-
+    data = data[~data.site_name.isnull()]
     data['site_capteurID'] = data.apply(lambda row: f"{row['site_name']} - {row['capteur_id']}", axis=1)
 
     return (data['site_capteurID'].unique(), data['site_capteurID'].unique()[0])

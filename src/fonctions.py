@@ -12,6 +12,7 @@ def list_of_strings(arg):
 
 def weekday_profile(
         aggregation: str,
+        capteur_value_var: str,
         data: pd.DataFrame,
         week_section: str,
 ):
@@ -24,7 +25,7 @@ def weekday_profile(
 
     out_data = pd.DataFrame()
     if aggregation == 'quart-horaire':
-        for col in ['valueRaw', 'value']:
+        for col in ['valueModified', 'value']:
             grouped_data = days_data[[index, col]].groupby(
                 days_data[index].dt.time
                 ).mean().drop([index], axis=1)
@@ -35,7 +36,7 @@ def weekday_profile(
         datime_format = '%H:%M:%S'
 
     if aggregation == 'horaire':
-        for col in ['valueRaw', 'value']:
+        for col in ['valueModified', 'value']:
             grouped_data = days_data[[index, col]].groupby(
                 days_data[index].dt.hour
                 ).mean().drop([index], axis=1)
@@ -46,7 +47,7 @@ def weekday_profile(
         datime_format = '%H'
 
     if aggregation == 'journalière':
-        for col in ['valueRaw', 'value']:
+        for col in ['valueModified', 'value']:
             grouped_data = days_data[[index, col]].groupby(
                 days_data[index].dt.day
                 ).mean().drop([index], axis=1)
@@ -78,17 +79,18 @@ def get_max(
 
 
 def get_stats(
+        hour_data: pd.DataFrame,
         minmax_data: pd.DataFrame,
-        day_data: pd.DataFrame,
         poll: str,
 ):
     seuil_information = SEUILS[poll]['FR']['seuil_information']
     seuil_alert = SEUILS[poll]['FR']['seuil_alerte']
 
     if poll in ['PM10', 'PM2.5']:
-        moyenne_periode = round(day_data.mean())
+        moyenne_periode = round(hour_data.mean())
         min_periode = round(minmax_data.min())
         max_periode = round(minmax_data.max())
+
         if moyenne_periode.isna().all():
             for i in range(1):
                 moyenne_periode[i] = 0
@@ -96,17 +98,17 @@ def get_stats(
                 max_periode[i] = 0
 
         count_seuil_information = (
-            day_data[day_data > seuil_information]
+            hour_data[hour_data > seuil_information]
             .count()
             )
 
         count_seuil_alert = (
-            day_data[day_data > seuil_alert]
+            hour_data[hour_data > seuil_alert]
             .count()
             )
 
     else:
-        moyenne_periode = round(day_data.mean())
+        moyenne_periode = round(minmax_data.mean())
         min_periode = round(minmax_data.min())
         max_periode = round(minmax_data.max())
         count_seuil_information = 'N/A'
@@ -163,17 +165,17 @@ def validate_and_aggregate(
         data: pd.DataFrame,
         threshold: int = 0.75,
 ):
-    data['data_coverage'] = (~np.isnan(data['valueRaw'])).astype(int)
+    data['data_coverage'] = (~np.isnan(data['valueModified'])).astype(int)
 
     hour_data = data.resample('H').mean()
     hour_data.loc[
-        hour_data['data_coverage'] < threshold, ['valueRaw', 'value']
+        hour_data['data_coverage'] < threshold, ['valueModified', 'value']
         ] = np.nan
     hour_data.drop(['data_coverage'], axis=1, inplace=True)
 
     day_data = data.resample('D').mean()
     day_data.loc[
-        day_data['data_coverage'] < threshold, ['valueRaw', 'value']
+        day_data['data_coverage'] < threshold, ['valueModified', 'value']
         ] = np.nan
     day_data.drop(['data_coverage'], axis=1, inplace=True)
 
@@ -193,7 +195,7 @@ def get_geoDF(
     capteur_data = request_microspot(
         observationTypeCodes=[ISO[polluant]],
         devices=[id_capteur],
-        aggregation="1 h",
+        aggregation='horaire',
         dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
     )
 
