@@ -25,7 +25,7 @@ def weekday_profile(
 
     out_data = pd.DataFrame()
     if aggregation == 'quart-horaire':
-        for col in ['valueModified', 'value']:
+        for col in ['valueRaw', 'value']:
             grouped_data = days_data[[index, col]].groupby(
                 days_data[index].dt.time
                 ).mean().drop([index], axis=1)
@@ -46,16 +46,16 @@ def weekday_profile(
             )
         datime_format = '%H'
 
-    if aggregation == 'journalière':
-        for col in ['valueModified', 'value']:
-            grouped_data = days_data[[index, col]].groupby(
-                days_data[index].dt.day
-                ).mean().drop([index], axis=1)
-            out_data = pd.concat(
-                [out_data, grouped_data],
-                axis=1
-            )
-        datime_format = '%d'
+    # if aggregation == 'journalière':
+    #     for col in ['valueModified', 'value']:
+    #         grouped_data = days_data[[index, col]].groupby(
+    #             days_data[index].dt.day
+    #             ).mean().drop([index], axis=1)
+    #         out_data = pd.concat(
+    #             [out_data, grouped_data],
+    #             axis=1
+    #         )
+    #     datime_format = '%d'
 
     out_data.index.name = 'heure'
     out_data.reset_index(inplace=True)

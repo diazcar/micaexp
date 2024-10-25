@@ -452,7 +452,7 @@ def build_graphs(
                 b=0,
                 l=0,
                 r=0,
-                t=0,
+                t=80,
             ),
             yaxis_range=[0, y_max]
     )
@@ -495,7 +495,7 @@ def build_graphs(
                 b=0,
                 l=0,
                 r=0,
-                t=0,
+                t=80,
             ),
             yaxis_range=[0, y_max]
     )
