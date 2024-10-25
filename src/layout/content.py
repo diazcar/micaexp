@@ -200,6 +200,14 @@ def generate_map(
         )
 
     fig_map.update_layout(
+        images=[dict(
+                source="./assets/logo_atmosud_inspirer_web.png",
+                xref="paper", yref="paper",
+                x=0.5, y=0.2,
+                sizex=0.5, sizey=0.5,
+                xanchor="center", yanchor="bottom",
+                opacity=0.08,
+            )],
         mapbox_style="open-street-map",
         mapbox_zoom=6.5,
         mapbox_center=dict(lon=6, lat=44),
@@ -237,6 +245,14 @@ def build_graphs(
 ):
     cap_name = site_plus_capteur.split(" - ")[0]
     cap_id = int(site_plus_capteur.split(" - ")[1])
+    watermark = [dict(
+                source="./assets/logo_atmosud_inspirer_web.png",
+                xref="paper", yref="paper",
+                x=0.5, y=0.2,
+                sizex=0.5, sizey=0.5,
+                xanchor="center", yanchor="bottom",
+                opacity=0.08,
+            )]
     #####################################################
     #                 GET DATA                          #
     #####################################################
@@ -390,6 +406,7 @@ def build_graphs(
     timeseries_fig.update_layout(
             title=graph_title('timeseries', aggregation, polluant),
             title_x=0.5,
+            images=watermark,
             # xaxis_title=f"{aggregation}",
             xaxis={'dtick': dtick},
             yaxis_title=f"{polluant} {UNITS[polluant]}",
@@ -406,7 +423,7 @@ def build_graphs(
                 r=0,
                 t=0,
             ),
-            yaxis_range=[0, y_max+y_max*.05]
+            yaxis_range=[0, y_max+y_max*.05],
 
     )
     # ---------------------------------------------------
@@ -431,6 +448,7 @@ def build_graphs(
     week_diurnal_cycle_fig.update_layout(
             title="Profil journalier en semaine",
             title_x=0.5,
+            images=watermark,
             xaxis=dict(
                 nticks=round(
                     len(week_diurnal_cycle_data.index)/dcycle_xticks_div
@@ -475,6 +493,7 @@ def build_graphs(
     wend_diurnal_cycle_fig.update_layout(
             title="Profil journalier en week-end",
             title_x=0.5,
+            images=watermark,
             xaxis=dict(
                 tick0=week_diurnal_cycle_data.index[1],
                 nticks=round(
@@ -547,6 +566,7 @@ def build_graphs(
     fig_boxplot.update_layout(
         title=graph_title('boxplot', aggregation, polluant),
         title_x=0.5,
+        images=watermark,
         yaxis=dict(
             title=f"{polluant} {UNITS[polluant]}",
             # tickvals=ytick_vals,
@@ -582,6 +602,14 @@ def build_graphs(
     fig_scatterplot.update_layout(
         title=f"Scatterplot : {cap_name}/{station_name}",
         title_x=0.5,
+        images=[dict(
+                source="./assets/logo_atmosud_inspirer_web.png",
+                xref="paper", yref="paper",
+                x=0.5, y=0,
+                sizex=0.5, sizey=0.5,
+                xanchor="center", yanchor="bottom",
+                opacity=0.08,
+            )],
         xaxis_title=station_name,
         yaxis_title=cap_name,
         margin=dict(
