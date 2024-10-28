@@ -79,7 +79,7 @@ def get_sidebar():
             #     ]
             # ),
             html.Hr(),
-            html.B("Sites (MicroCapteurs ID) "),
+            html.B("Sites (microcapteur_ID) "),
             html.Div(
                 [
                     dcc.Dropdown(

@@ -301,10 +301,17 @@ def build_graphs(
             datatype='horaire'
         )
 
-    hour_data = pd.concat(
-        [capteur_hour_data.valueModified, station_hour_data.value],
-        axis=1
-    )
+    if 'valueModified' in capteur_hour_data:
+        hour_data = pd.concat(
+            [capteur_hour_data.valueModified, station_hour_data.value],
+            axis=1
+        )
+    else:
+        capteur_hour_data['valueModified'] = None
+        hour_data = pd.concat(
+            [capteur_hour_data.valueModified, station_hour_data.value],
+            axis=1
+        )
 
     quart_data = pd.concat(
         [capteur_quart_data.valueRaw, station_quart_data.value],
@@ -320,11 +327,14 @@ def build_graphs(
     if aggregation == 'horaire':
         capteur_value_var = 'valueModified'
         graph_data = hour_data
+        if graph_data.valueModified.isnull().all():
+            cap_name = "NO_DATA"
 
     else:
         capteur_value_var = 'valueRaw'
         graph_data = quart_data
-
+        if graph_data.valueRaw.isnull().all():
+            cap_name = "NO_DATA"
     # ----------------------------------------------------
     if graph_data.value.isnull().all():
         station_name = "NO_DATA"
