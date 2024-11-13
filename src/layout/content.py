@@ -8,10 +8,8 @@ from src.fonctions import (
     get_geoDF,
     get_max,
     get_stats,
-    get_zoom_level_and_center,
     graph_title,
     save_dataframes,
-    validate_and_aggregate,
     weekday_profile
 )
 from src.glob_vars import COLORS, SEUILS, UNITS
@@ -26,108 +24,113 @@ load_dotenv()
 def get_content():
     return html.Div(
         [
-            html.H1(id='title_layout'),
-            html.Br(),
-            dbc.Row([
-                dbc.Col([
-                    html.H6(
-                        id='names_col',
-                    )
-                ], width=2),
-                dbc.Col([
-                    html.H6(
-                        id='stats_col_1',
-                    )
-                ], width=2),
-                dbc.Col([
-                    html.H6(
-                        id='stats_col_2',
-                    )
-                ], width=2),
-                dbc.Col([
-                    html.H6(
-                        id='stats_col_3',
-                    )
-                ], width=3),
-                dbc.Col([
-                    html.H6(
-                        id='stats_col_4',
-                    )
-                ], width=3),
-            ]),
-            html.Br(),
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(
-                        figure={},
-                        id="timeseries",
-                        ),
-                    ], width=12),
-            ]),
-            html.Br(),
-
-            dbc.Row([
-                dbc.Col([
-                    dcc.Graph(
-                        figure={},
-                        id="diurnal_cycle_workweek",
-                        style=dict(
-                            height='30vh'
+            dcc.Loading(
+                id='loading',
+                children=[
+                    html.H1(id='title_layout'),
+                    html.Br(),
+                    dbc.Row([
+                        dbc.Col([
+                            html.H6(
+                                id='names_col',
                             )
-                        )
-                    ], width=6),
-                    dbc.Col([
-                        dcc.Graph(
-                            figure={},
-                            id="diurnal_cycle_weekend",
-                            style=dict(
-                                height='30vh'
-                                )
+                        ], width=2),
+                        dbc.Col([
+                            html.H6(
+                                id='stats_col_1',
                             )
-                        ], width=6),
+                        ], width=2),
+                        dbc.Col([
+                            html.H6(
+                                id='stats_col_2',
+                            )
+                        ], width=2),
+                        dbc.Col([
+                            html.H6(
+                                id='stats_col_3',
+                            )
+                        ], width=3),
+                        dbc.Col([
+                            html.H6(
+                                id='stats_col_4',
+                            )
+                        ], width=3),
                     ]),
-            html.Br(),
-            # dbc.Row([
-            #     dbc.Col([
-            #         dcc.Graph(
-            #             figure={},
-            #             id="diurnal_cycle_weekend",
-            #             style=dict(
-            #                 height='30vh'
-            #                 )
-            #             )
-            #         ], width=12),
-            #     ]),
-            html.Br(),
-            dbc.Row([
-                dbc.Col([
                     html.Br(),
-                    html.Br(),
-                    html.Br(),
+                    dbc.Row([
+                        dbc.Col([
+                            dcc.Graph(
+                                figure={},
+                                id="timeseries",
+                                ),
+                            ], width=12),
+                    ]),
                     html.Br(),
 
-                    dcc.Graph(figure={}, id="boxplot"),
-                    ], width=7),
-                dbc.Col([
-                    dcc.Graph(figure={}, id="map"),
-                    ], width=5),
-            ]),
-            html.Hr(),
-            html.Img(
-                src="assets/valeurs_de_reference.png",
-                style={'height': '70%'}
-                ),
+                    dbc.Row([
+                        dbc.Col([
+                            dcc.Graph(
+                                figure={},
+                                id="diurnal_cycle_workweek",
+                                style=dict(
+                                    height='30vh'
+                                    )
+                                )
+                            ], width=6),
+                        dbc.Col([
+                            dcc.Graph(
+                                figure={},
+                                id="diurnal_cycle_weekend",
+                                style=dict(
+                                    height='30vh'
+                                    )
+                                )
+                            ], width=6),
+                            ]),
+                    html.Br(),
+                    # dbc.Row([
+                    #     dbc.Col([
+                    #         dcc.Graph(
+                    #             figure={},
+                    #             id="diurnal_cycle_weekend",
+                    #             style=dict(
+                    #                 height='30vh'
+                    #                 )
+                    #             )
+                    #         ], width=12),
+                    #     ]),
+                    html.Br(),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Br(),
+                            html.Br(),
+                            html.Br(),
+                            html.Br(),
 
-            html.H6(
-                [
-                    html.B("Seuil d’information "),"- Niveau de concentration sur 24h au delà duquel des informations sont diffusées aux personnes sensibles", html.Br(),
-                    html.B("Seuil d’alerte "),	"- Niveau de concentration sur 24h au delà duquel il y a un risque pour la santé justifiant de mesures d'urgence", html.Br(),
-                    html.B("Ligne directrice (LD) "),	"- Valeur recommandée par l'Organisation Mondiale de la Santé", html.Br(),
-                    html.B("Valeur cible (VC) "),	"- Niveau de concentration à atteindre dans un délai donné", html.Br(),
-                    html.B("Valeur limite (VL) "), "-Niveau réglementaire de concentration à ne pas dépasser", html.Br(),
-                    html.B("Objectif qualité (OQ) "), "-Niveau de concentration à attendre à long terme", html.Br(),
-        ]
-    )
+                            dcc.Graph(figure={}, id="boxplot"),
+                            ], width=7),
+                        dbc.Col([
+                            dcc.Graph(figure={}, id="map"),
+                            ], width=5),
+                    ]),
+                    html.Hr(),
+                    html.Img(
+                        src="assets/valeurs_de_reference.png",
+                        style={'height': '70%'}
+                        ),
+
+                    html.H6(
+                        [
+                            html.B("Seuil d’information "),"- Niveau de concentration sur 24h au delà duquel des informations sont diffusées aux personnes sensibles", html.Br(),
+                            html.B("Seuil d’alerte "),	"- Niveau de concentration sur 24h au delà duquel il y a un risque pour la santé justifiant de mesures d'urgence", html.Br(),
+                            html.B("Ligne directrice (LD) "),	"- Valeur recommandée par l'Organisation Mondiale de la Santé", html.Br(),
+                            html.B("Valeur cible (VC) "),	"- Niveau de concentration à atteindre dans un délai donné", html.Br(),
+                            html.B("Valeur limite (VL) "), "-Niveau réglementaire de concentration à ne pas dépasser", html.Br(),
+                            html.B("Objectif qualité (OQ) "), "-Niveau de concentration à attendre à long terme", html.Br(),
+                        ]
+                    )
+                ]
+            )
         ],
         style=CONTENT_STYLE,
     )
@@ -164,7 +167,7 @@ def generate_map(
     end_date: str,
     station_name: str
 ):
-    cap_name, cap_id = site_plus_capteur.split(" - ")
+    cap_name, cap_id = site_plus_capteur.rsplit(" - ", 1)
     source_select = ['capteur', 'station']
     names = [cap_name, station_name]
     # ---------------------------------------------------
@@ -207,7 +210,7 @@ def generate_map(
                 sizex=0.5, sizey=0.5,
                 xanchor="center", yanchor="bottom",
                 opacity=0.08,
-            )],
+                )],
         mapbox_style="open-street-map",
         mapbox_zoom=6.5,
         mapbox_center=dict(lon=6, lat=44),
@@ -243,8 +246,9 @@ def build_graphs(
     station_name: str = None,
     aggregation: str = 'quart-horaire',
 ):
-    cap_name = site_plus_capteur.split(" - ")[0]
-    cap_id = int(site_plus_capteur.split(" - ")[1])
+    print(site_plus_capteur.rsplit(" - ", 1))
+    cap_name = site_plus_capteur.rsplit(" - ", 1)[0]
+    cap_id = int(site_plus_capteur.rsplit(" - ", 1)[1])
     watermark = [dict(
                 source="./assets/logo_atmosud_inspirer_web.png",
                 xref="paper", yref="paper",
@@ -619,7 +623,7 @@ def build_graphs(
                 sizex=0.5, sizey=0.5,
                 xanchor="center", yanchor="bottom",
                 opacity=0.08,
-            )],
+                )],
         xaxis_title=station_name,
         yaxis_title=cap_name,
         margin=dict(
@@ -643,7 +647,7 @@ def build_graphs(
         seuil_alert,
     ) = get_stats(
         hour_data=hour_data,
-        minmax_data=quart_data,
+        minmax_data=hour_data,
         poll=polluant
         )
 
