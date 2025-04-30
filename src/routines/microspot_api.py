@@ -97,7 +97,7 @@ def response_to_dataframe(
 
 def request_microspot(
     aggregation: str,
-    timezone: str = "Africa/Maputo",
+    timezone: str = "Europe/Paris",
     studies: list = [],
     campaigns: list = [],
     observationTypeCodes: list = ["24"],
