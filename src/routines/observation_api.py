@@ -2,25 +2,25 @@ import requests
 import pandas as pd
 
 KEYS = {
-    'campagnes': 'capteurs/campagnes',
-    'mesures': 'capteurs/mesures',
-    'sites': 'capteurs/sites'
+    "campagnes": "capteurs/campagnes",
+    "mesures": "capteurs/mesures",
+    "sites": "capteurs/sites",
 }
 
 APIS_URLS = {
-    'observations': 'https://api.atmosud.org/observations',
+    "observations": "https://api.atmosud.org/observations",
 }
 
 ISO = {
-    'PM10': '24',
-    'PM2.5': '39',
-    'PM1': '68',
+    "PM10": "24",
+    "PM2.5": "39",
+    "PM1": "68",
 }
 
 JSON_PATH_LIST = {
-    'sites': {
-        'record_path': None,
-        'meta': [
+    "sites": {
+        "record_path": None,
+        "meta": [
             "id_site",
             "nom_site",
             "type_site",
@@ -37,12 +37,12 @@ JSON_PATH_LIST = {
             "id_capteur",
             "marque_capteur",
             "modele_capteur",
-            "variables"
-        ]
+            "variables",
+        ],
     },
-    'mesures': {
-        'record_path': None,
-        'meta': [
+    "mesures": {
+        "record_path": None,
+        "meta": [
             "id_site",
             "time",
             "nom_site",
@@ -52,34 +52,29 @@ JSON_PATH_LIST = {
             "valeur",
             "valeur_ref",
             "code_etat",
-            "unite"
-            ],
+            "unite",
+        ],
     },
-
 }
 
 
 def make_record_time(
-        data: pd.DataFrame,
-        folder_key: str,
+    data: pd.DataFrame,
+    folder_key: str,
 ):
-    if folder_key == 'mesures':
-        data['time'] = pd.to_datetime(
-            data['time'],
-            format="%Y-%m-%dT%H:%M:%SZ"
-            )
-        data.set_index('time', inplace=True)
+    if folder_key == "mesures":
+        data["time"] = pd.to_datetime(data["time"], format="%Y-%m-%dT%H:%M:%SZ")
+        data.set_index("time", inplace=True)
 
 
 def add_custom_columns(
-        data: pd.DataFrame,
-        folder_key: str,
+    data: pd.DataFrame,
+    folder_key: str,
 ) -> pd.DataFrame:
-    if folder_key == 'sites':
-        data['site_plus_capteur'] = data.apply(
-            lambda row: f'{row.nom_site} - {row.id_site} ({row.id_capteur})',
-            axis=1
-            )
+    if folder_key == "sites":
+        data["site_plus_capteur"] = data.apply(
+            lambda row: f"{row.nom_site} - {row.id_site} ({row.id_capteur})", axis=1
+        )
 
 
 def get_site_info(
@@ -87,33 +82,32 @@ def get_site_info(
     search_key: str,
     col_target: str,
 ):
-    info = CAPTEUR_SITE_INFO[
-        CAPTEUR_SITE_INFO[col_key] == search_key
-            ][col_target].values[0]
+    info = CAPTEUR_SITE_INFO[CAPTEUR_SITE_INFO[col_key] == search_key][
+        col_target
+    ].values[0]
 
     return info
 
 
 def request_api_observations(
-
-        folder_key: str,
-        api_url: str = 'observations',
-        format: str = "json",
-        download: str = 'false',
-        start_date: str = None,
-        end_date: str = None,
-        id_campagne: int = None,
-        nom_campagne: str = None,
-        id_site: int = None,
-        nom_site: str = None,
-        id_capteur: int = None,
-        id_variable: str = None,
-        aggregation: str = 'horaire',
-        nb_dec: int = None,
-        valeur_brute: int = False
+    folder_key: str,
+    api_url: str = "observations",
+    format: str = "json",
+    download: str = "false",
+    start_date: str = None,
+    end_date: str = None,
+    id_campagne: int = None,
+    nom_campagne: str = None,
+    id_site: int = None,
+    nom_site: str = None,
+    id_capteur: int = None,
+    id_variable: str = None,
+    aggregation: str = "horaire",
+    nb_dec: int = None,
+    valeur_brute: int = False,
 ) -> pd.DataFrame:
 
-    if folder_key == 'sites':
+    if folder_key == "sites":
         url = "".join(
             [
                 f"{APIS_URLS[api_url]}/",
@@ -126,7 +120,7 @@ def request_api_observations(
         if nom_site:
             url += f"nom_site={nom_site}&"
 
-    if folder_key == 'mesures':
+    if folder_key == "mesures":
         url = "".join(
             [
                 f"{APIS_URLS[api_url]}/",
@@ -138,7 +132,7 @@ def request_api_observations(
                 f"download={download}&",
                 f"aggregation={aggregation}&",
                 f"nb_dec={nb_dec}&",
-                f"valeur_brute={valeur_brute}"
+                f"valeur_brute={valeur_brute}",
             ]
         )
 
@@ -157,7 +151,7 @@ def request_api_observations(
 
 
 CAPTEUR_SITE_INFO = request_api_observations(
-    folder_key='sites',
-    format='json',
-    download='false',
+    folder_key="sites",
+    format="json",
+    download="false",
 )

@@ -8,7 +8,7 @@ from src.routines.xair import (
     ISO,
     request_xr,
     time_window,
-    )
+)
 
 from maindash import app
 
@@ -22,12 +22,10 @@ def get_sidebar():
             html.Div(
                 [
                     dcc.Dropdown(
-                        options=['PM10', 'PM2.5', 'PM1'],
-                        value='PM10',
+                        options=["PM10", "PM2.5", "PM1"],
+                        value="PM10",
                         id="polluant_dropdown",
-                        style={
-                            "border": "0",
-                            "background": "transparent"}
+                        style={"border": "0", "background": "transparent"},
                     )
                 ]
             ),
@@ -36,18 +34,18 @@ def get_sidebar():
             html.Div(
                 [
                     dcc.DatePickerRange(
-                        id='my-date-picker-range',
+                        id="my-date-picker-range",
                         # max_date_allowed=TIME_NOW,
                         # min_date_allowed=TIME_NOW,
                         initial_visible_month=TIME_NOW,
                         start_date=time_window(format="%Y-%m-%d")[0],
                         end_date=time_window(format="%Y-%m-%d")[1],
-                        display_format='YYYY-MM-DD',
+                        display_format="YYYY-MM-DD",
                         style={
-                            'font-size': 6,
-                            },
+                            "font-size": 6,
+                        },
                     ),
-                    html.Div(id='output-container-date-picker-range')
+                    html.Div(id="output-container-date-picker-range"),
                 ]
             ),
             html.Hr(),
@@ -56,14 +54,12 @@ def get_sidebar():
                 [
                     dcc.Dropdown(
                         options=[
-                            'quart-horaire',
-                            'horaire',
-                            ],
-                        value='horaire',
+                            "quart-horaire",
+                            "horaire",
+                        ],
+                        value="horaire",
                         id="time_step_dropdown",
-                        style={
-                            "border": "0",
-                            "background": "transparent"},
+                        style={"border": "0", "background": "transparent"},
                     )
                 ]
             ),
@@ -84,10 +80,8 @@ def get_sidebar():
                 [
                     dcc.Dropdown(
                         id="micro_capteur_sites_dropdown",
-                        className='dropUp',
-                        style={
-                            "border": "0",
-                            "background": "transparent"},
+                        className="dropUp",
+                        style={"border": "0", "background": "transparent"},
                     )
                 ]
             ),
@@ -96,13 +90,11 @@ def get_sidebar():
             html.Div(
                 [
                     dcc.Dropdown(
-                        options=['ARSON'],
+                        options=["ARSON"],
                         id="station_xair_dropdown",
-                        value='ARSON',
-                        className='dropUp',
-                        style={
-                            "border": "0",
-                            "background": "transparent"},
+                        value="ARSON",
+                        className="dropUp",
+                        style={"border": "0", "background": "transparent"},
                     )
                 ]
             ),
@@ -120,27 +112,26 @@ def get_sidebar():
 
 
 @app.callback(
-    Output('station_xair_dropdown', 'options'),
-    Input('polluant_dropdown', 'value'),
+    Output("station_xair_dropdown", "options"),
+    Input("polluant_dropdown", "value"),
 )
 def get_station_dropdown(
     poll: str,
 ) -> list:
 
     list_options = request_xr(
-        folder='measures',
-        physicals=ISO[poll],
-        groups='DIDON').id_site.unique()
+        folder="measures", physicals=ISO[poll], groups="DIDON"
+    ).id_site.unique()
 
     return list_options
 
 
 @app.callback(
-    Output('micro_capteur_sites_dropdown', 'options'),
-    Output('micro_capteur_sites_dropdown', 'value'),
-    Input('polluant_dropdown', 'value'),
-    Input('my-date-picker-range', 'start_date'),
-    Input('my-date-picker-range', 'end_date')
+    Output("micro_capteur_sites_dropdown", "options"),
+    Output("micro_capteur_sites_dropdown", "value"),
+    Input("polluant_dropdown", "value"),
+    Input("my-date-picker-range", "start_date"),
+    Input("my-date-picker-range", "end_date"),
 )
 def get_capteur_site_dropdown(
     poll: str,
@@ -154,9 +145,11 @@ def get_capteur_site_dropdown(
             f"{start_date}T00:00:00+00:00",
             f"{end_date}T00:00:00+00:00",
         ],
-        aggregation='horaire'
+        aggregation="horaire",
     )
     data = data[~data.site_name.isnull()]
-    data['site_capteurID'] = data.apply(lambda row: f"{row['site_name']} - {row['capteur_id']}", axis=1)
+    data["site_capteurID"] = data.apply(
+        lambda row: f"{row['site_name']} - {row['capteur_id']}", axis=1
+    )
 
-    return (data['site_capteurID'].unique(), data['site_capteurID'].unique()[0])
+    return (data["site_capteurID"].unique(), data["site_capteurID"].unique()[0])
