@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from dash import html, dcc, Input, Output
+from dash import html, dcc, Input, Output, dash_table
 import dash_bootstrap_components as dbc
 import pandas as pd
 from plotly import graph_objects as go
@@ -29,49 +29,12 @@ def get_content():
                 children=[
                     html.H1(id="title_layout"),
                     html.Br(),
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.H6(
-                                        id="names_col",
-                                    )
-                                ],
-                                width=2,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.H6(
-                                        id="stats_col_1",
-                                    )
-                                ],
-                                width=2,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.H6(
-                                        id="stats_col_2",
-                                    )
-                                ],
-                                width=2,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.H6(
-                                        id="stats_col_3",
-                                    )
-                                ],
-                                width=3,
-                            ),
-                            dbc.Col(
-                                [
-                                    html.H6(
-                                        id="stats_col_4",
-                                    )
-                                ],
-                                width=3,
-                            ),
-                        ]
+                    dash_table.DataTable(
+                        id="summary_table",
+                        columns=[],  # Will be set dynamically
+                        data=[],  # Will be set dynamically
+                        style_table={"overflowX": "auto"},
+                        style_cell={"textAlign": "center"},
                     ),
                     html.Br(),
                     dbc.Row(
@@ -268,11 +231,8 @@ def generate_map(
     Output("diurnal_cycle_workweek", "figure"),
     Output("diurnal_cycle_weekend", "figure"),
     Output("boxplot", "figure"),
-    Output("names_col", "children"),
-    Output("stats_col_1", "children"),
-    Output("stats_col_2", "children"),
-    Output("stats_col_3", "children"),
-    Output("stats_col_4", "children"),
+    Output("summary_table", "columns"),
+    Output("summary_table", "data"),
     Input("my-date-picker-range", "start_date"),
     Input("my-date-picker-range", "end_date"),
     Input("micro_capteur_sites_dropdown", "value"),
@@ -648,93 +608,44 @@ def build_graphs(
         seuil_alert,
     ) = get_stats(hour_data=hour_data, minmax_data=hour_data, poll=polluant)
 
-    names = html.P(
-        [
-            html.Br(),
-            html.Br(),
-            html.Br(),
-            html.Br(),
-            html.B([html.B("Microcapteur"), html.H3(f"{cap_name}:")]),
-            html.Br(),
-            html.B([html.B("Station Référence."), html.H3(f"{station_name}:")]),
-        ]
+    # Build a summary DataFrame
+    summary_df = pd.DataFrame(
+        {
+            "Microcapteur": [
+                f"{cap_name}",
+                f"{moyenne_periode[0]:.0f}",
+                f"{min_periode[0]:.0f} / {max_periode[0]:.0f}",
+                f"{count_seuil_information[0]}",
+                f"{count_seuil_alert[0]}",
+            ],
+            "Station": [
+                f"{station_name}",
+                f"{moyenne_periode[1]:.0f}",
+                f"{min_periode[1]:.0f} / {max_periode[1]:.0f}",
+                f"{count_seuil_information[1]}",
+                f"{count_seuil_alert[1]}",
+            ],
+        },
+        index=[
+            "Nom",
+            "Moyenne période (µg/m³)",
+            "Min / Max horaire (µg/m³)",
+            f"Dépassements seuil info ({seuil_information} µg/m³/24h)",
+            f"Dépassements seuil alerte ({seuil_alert} µg/m³/24h)",
+        ],
     )
-    p1 = html.P(
-        [
-            html.Center(
-                [
-                    html.B("Moyenne de "),
-                    html.B("la période :"),
-                    html.Br(),
-                    html.B("µg/m³"),
-                ]
-            ),
-            html.Br(),
-            html.Hr(),
-            html.Center(html.H3(f" {moyenne_periode[0]:.0f}")),
-            html.Hr(),
-            html.Center(html.H3(f" {moyenne_periode[1]:.0f}")),
-            html.Hr(),
-        ]
-    )
-    p2 = html.P(
-        [
-            html.Center([html.B("Min / Max horaire:"), html.Br(), html.B("µg/m³")]),
-            html.Br(),
-            html.Hr(),
-            html.Center(html.H3(f" {min_periode[0]:.0f} / {max_periode[0]:.0f}")),
-            html.Hr(),
-            html.Center(html.H3(f" {min_periode[1]:.0f} / {max_periode[1]:.0f}")),
-            html.Hr(),
-        ]
-    )
-    p3 = html.P(
-        [
-            html.Center(
-                [
-                    html.B("Nombre de dépassements "),
-                    html.B("du seuil d'information:"),
-                    html.Br(),
-                    html.B(f"({seuil_information} µg/m³ en moyenne sur 24h)"),
-                ]
-            ),
-            html.Br(),
-            html.Hr(),
-            html.Center(html.H3(f"{count_seuil_information[0]}")),
-            html.Hr(),
-            html.Center(html.H3(f" {count_seuil_information[1]}")),
-            html.Hr(),
-        ]
-    )
-    p4 = html.P(
-        [
-            html.Center(
-                [
-                    html.B("Nombre de dépassements"),
-                    html.B(" du seuil d'alerte:"),
-                    html.Br(),
-                    html.B(f"({seuil_alert} µg/m³ en moyenne sur 24h)"),
-                ]
-            ),
-            html.Br(),
-            html.Hr(),
-            html.Center(html.H3(f"{count_seuil_alert[0]}")),
-            html.Hr(),
-            html.Center(html.H3(f"{count_seuil_alert[1]}")),
-            html.Hr(),
-        ]
-    )
+
+    summary_df_reset = summary_df.reset_index().rename(columns={"index": " "})
+    columns = [{"name": col, "id": col} for col in summary_df_reset.columns]
+    data = summary_df_reset.to_dict("records")
 
     return (
         timeseries_fig,
         week_diurnal_cycle_fig,
         wend_diurnal_cycle_fig,
         fig_boxplot,
-        names,
-        p1,
-        p2,
-        p3,
-        p4,
+        columns,
+        data,
     )
 
 
@@ -822,4 +733,3 @@ def get_station_info(nom_site: str):
     #     # html.H6(f"{json_data['zoneOfActivityLabel'].values[0]}"),
     #     ]
     # )
-
