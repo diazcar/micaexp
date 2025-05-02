@@ -342,18 +342,6 @@ def build_graphs(
     names = [cap_name, station_name]
     source_select = ["capteur", "station"]
 
-    # Save data to debug
-    save_dataframes(
-        [
-            capteur_quart_data,
-            capteur_hour_data,
-            station_quart_data,
-            station_hour_data,
-            graph_data,
-        ],
-        path="./notebook",
-    )
-
     if aggregation == "quart-horaire":
         dcycle_xticks_div = 2
     if aggregation == "horaire":
@@ -553,48 +541,6 @@ def build_graphs(
         yaxis_range=[0, 100],
         # yaxis_range=[0, y_max+y_max*.05]
     )
-
-    # ---------------------------------------------------
-    #         SCATTER PLOT
-    # ---------------------------------------------------
-    fig_scatterplot = go.Figure()
-
-    fig_scatterplot.add_trace(
-        go.Scatter(
-            x=graph_data[station_value_var],
-            y=graph_data[capteur_value_var],
-            mode="markers",
-            marker_color="purple",
-        )
-    )
-
-    fig_scatterplot.update_layout(
-        title=f"Scatterplot : {cap_name}/{station_name}",
-        title_x=0.5,
-        images=[
-            dict(
-                source="./assets/logo_atmosud_inspirer_web.png",
-                xref="paper",
-                yref="paper",
-                x=0.5,
-                y=0,
-                sizex=0.5,
-                sizey=0.5,
-                xanchor="center",
-                yanchor="bottom",
-                opacity=0.08,
-            )
-        ],
-        xaxis_title=station_name,
-        yaxis_title=cap_name,
-        margin=dict(
-            b=0,
-            l=0,
-            r=0,
-            t=25,
-        ),
-    )
-
     # ---------------------------------------------------
     #         SEUILS DE REFERENCE INFO
     # ---------------------------------------------------
