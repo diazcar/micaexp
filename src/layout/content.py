@@ -9,14 +9,15 @@ from src.fonctions import (
     get_max,
     get_stats,
     graph_title,
-    save_dataframes,
     weekday_profile,
+    get_color_map
 )
 from src.glob_vars import COLORS, SEUILS, UNITS
 from src.layout.styles import CONTENT_STYLE
 from maindash import app
 from src.routines.microspot_api import request_microspot
 from src.routines.xair import request_xr, wrap_xair_request, ISO
+import plotly.colors
 
 load_dotenv()
 
@@ -303,44 +304,35 @@ def build_graphs(
         datatype="horaire",
     )
 
-    if "valueModified" in capteur_hour_data:
-        hour_data = pd.concat(
-            [capteur_hour_data.valueModified, station_hour_data.value], axis=1
-        )
-    else:
-        capteur_hour_data["valueModified"] = None
-        hour_data = pd.concat(
-            [capteur_hour_data.valueModified, station_hour_data.value], axis=1
-        )
+    # After fetching your dataframes (capteur_quart_data, station_quart_data, etc.)
 
+    # Rename columns for clarity
+    station_col_name = "station"
+    micro_col_name = f"microcapteur_{cap_id}"  # or use cap_name if you prefer
+
+    # For hourly data
+    capteur_hour_data = capteur_hour_data.rename(
+        columns={"valueModified": micro_col_name}
+    )
+    station_hour_data = station_hour_data.rename(columns={"value": station_col_name})
+    hour_data = pd.concat(
+        [station_hour_data[station_col_name], capteur_hour_data[micro_col_name]], axis=1
+    )
+
+    # For quart-horaire data
+    capteur_quart_data = capteur_quart_data.rename(columns={"valueRaw": micro_col_name})
+    station_quart_data = station_quart_data.rename(columns={"value": station_col_name})
     quart_data = pd.concat(
-        [capteur_quart_data.valueRaw, station_quart_data.value],
+        [station_quart_data[station_col_name], capteur_quart_data[micro_col_name]],
         axis=1,
     )
 
-    station_value_var = "value"
-
-    # ---------------------------------------
-    # Graphs datas
-    # ---------------------------------------
-
+    # Now, graph_data will always have columns: ["station", "microcapteur_<id>"]
     if aggregation == "horaire":
-        capteur_value_var = "valueModified"
         graph_data = hour_data
-        if graph_data.valueModified.isnull().all():
-            cap_name = "NO_DATA"
-
     else:
-        capteur_value_var = "valueRaw"
         graph_data = quart_data
-        if graph_data.valueRaw.isnull().all():
-            cap_name = "NO_DATA"
-    # ----------------------------------------------------
-    if graph_data.value.isnull().all():
-        station_name = "NO_DATA"
 
-    names = [cap_name, station_name]
-    source_select = ["capteur", "station"]
 
     if aggregation == "quart-horaire":
         dcycle_xticks_div = 2
@@ -350,6 +342,9 @@ def build_graphs(
     # -------------------------------------
     #           DIURNAL CYCLE DATA
     # -------------------------------------
+
+    capteur_value_var = f"microcapteur_{cap_id}"
+
     week_diurnal_cycle_data = weekday_profile(
         aggregation=aggregation,
         capteur_value_var=capteur_value_var,
@@ -363,19 +358,35 @@ def build_graphs(
         week_section="weekend",
     )
 
+    # Dynamically generate color map
+    def get_color_map(columns):
+        # Always assign station to firebrick, others get Plotly's default colors
+        default_colors = plotly.colors.qualitative.Plotly
+        color_map = {}
+        color_iter = iter(default_colors)
+        for col in columns:
+            if col == "station":
+                color_map[col] = "firebrick"
+            else:
+                color_map[col] = next(color_iter)
+        return color_map
+
+    # After graph_data is defined
+    color_map = get_color_map(graph_data.columns)
+
     # -------------------------------------
     #  CAPTEUR             TIMESERIES
     # -------------------------------------
     timeseries_fig = go.Figure()
     y_max = graph_data.max().max()
 
-    for i, col in enumerate(graph_data.columns):
+    for col in graph_data.columns:
         timeseries_fig.add_trace(
             go.Scatter(
                 y=graph_data[col],
                 x=graph_data.index,
-                line=dict(color=COLORS["lines"][source_select[i]]),
-                name=names[i],
+                line=dict(color=color_map[col]),
+                name="Station" if col == "station" else col,
             )
         )
 
@@ -419,13 +430,13 @@ def build_graphs(
     y_max = get_max(week_diurnal_cycle_data, wend_diurnal_cycle_data)
 
     week_diurnal_cycle_fig = go.Figure()
-    for i, col in enumerate(week_diurnal_cycle_data.columns):
+    for col in week_diurnal_cycle_data.columns:
         week_diurnal_cycle_fig.add_trace(
             go.Scatter(
                 y=week_diurnal_cycle_data[col],
                 x=week_diurnal_cycle_data.index,
-                line=dict(color=COLORS["lines"][source_select[i]]),
-                name=names[i],
+                line=dict(color=color_map.get(col, None)),
+                name="Station" if col == "station" else col,
             )
         )
 
@@ -455,13 +466,13 @@ def build_graphs(
     # ---------------------------------------------------
     wend_diurnal_cycle_fig = go.Figure()
 
-    for i, col in enumerate(wend_diurnal_cycle_data.columns):
+    for col in wend_diurnal_cycle_data.columns:
         wend_diurnal_cycle_fig.add_trace(
             go.Scatter(
                 y=wend_diurnal_cycle_data[col],
                 x=wend_diurnal_cycle_data.index,
-                line=dict(color=COLORS["lines"][source_select[i]]),
-                name=names[i],
+                line=dict(color=color_map.get(col, None)),
+                name="Station" if col == "station" else col,
             )
         )
 
@@ -495,16 +506,15 @@ def build_graphs(
         overlaying="x", range=[0, 1], showticklabels=False
     )
 
-    for i, col in enumerate(graph_data.columns):
+    for col in graph_data.columns:
         fig_boxplot.add_trace(
             go.Box(
                 y=graph_data[col],
-                name=names[i],
-                line=dict(color=COLORS["lines"][source_select[i]]),
-                # boxpoints='all',
-                # boxmean='sd'
+                name="Station" if col == "station" else col,
+                line=dict(color=color_map[col]),
             )
         )
+
     if polluant in ["PM10", "PM2.5"]:
         for i, seuil in enumerate(list(SEUILS[polluant]["FR"].keys())):
             seuil_value = SEUILS[polluant]["FR"][seuil]

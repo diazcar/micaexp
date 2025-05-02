@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import geopandas as gp
+import plotly.colors
 from src.glob_vars import SEUILS
 from src.routines.microspot_api import request_microspot
 from src.routines.xair import ISO, request_xr
@@ -24,38 +25,17 @@ def weekday_profile(
         days_data = data[data[index].dt.weekday > 4]
 
     out_data = pd.DataFrame()
-    if aggregation == "quart-horaire":
-        for col in ["valueRaw", "value"]:
-            grouped_data = (
-                days_data[[index, col]]
-                .groupby(days_data[index].dt.time)
-                .mean()
-                .drop([index], axis=1)
-            )
-            out_data = pd.concat([out_data, grouped_data], axis=1)
-        datime_format = "%H:%M:%S"
 
-    if aggregation == "horaire":
-        for col in ["valueModified", "value"]:
-            grouped_data = (
-                days_data[[index, col]]
-                .groupby(days_data[index].dt.hour)
-                .mean()
-                .drop([index], axis=1)
-            )
-            out_data = pd.concat([out_data, grouped_data], axis=1)
-        datime_format = "%H"
+    for col in days_data.columns:
+        grouped_data = (
+            days_data[[index, col]]
+            .groupby(days_data[index].dt.time)
+            .mean()
+            .drop([index], axis=1)
+        )
+        out_data = pd.concat([out_data, grouped_data], axis=1)
+    datime_format = "%H:%M:%S"
 
-    # if aggregation == 'journalière':
-    #     for col in ['valueModified', 'value']:
-    #         grouped_data = days_data[[index, col]].groupby(
-    #             days_data[index].dt.day
-    #             ).mean().drop([index], axis=1)
-    #         out_data = pd.concat(
-    #             [out_data, grouped_data],
-    #             axis=1
-    #         )
-    #     datime_format = '%d'
 
     out_data.index.name = "heure"
     out_data.reset_index(inplace=True)
@@ -130,6 +110,20 @@ def clean_outlayers(data: pd.DataFrame):
         data[col] = data[col].where(data[col].le(upper), np.nan)
     return data
 
+
+def get_color_map(columns):
+    """
+    Assigns 'firebrick' to 'station' and Plotly default colors to other columns.
+    """
+    default_colors = plotly.colors.qualitative.Plotly
+    color_map = {}
+    color_iter = iter(default_colors)
+    for col in columns:
+        if col == "station":
+            color_map[col] = "firebrick"
+        else:
+            color_map[col] = next(color_iter)
+    return color_map
 
 def graph_title(
     graph_type: str,
