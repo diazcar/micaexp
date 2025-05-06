@@ -12,8 +12,6 @@ def list_of_strings(arg):
 
 
 def weekday_profile(
-    aggregation: str,
-    capteur_value_var: str,
     data: pd.DataFrame,
     week_section: str,
 ):
@@ -171,38 +169,43 @@ def validate_and_aggregate(
 
 
 def get_geoDF(
-    id_capteur: str,
+    id_capteur:list,  # can be int, str, or list
     polluant: str,
     start_date: str,
     end_date: str,
     nom_station: str,
 ):
 
-    capteur_data = request_microspot(
-        observationTypeCodes=[ISO[polluant]],
-        devices=[id_capteur],
-        aggregation="horaire",
-        dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
-    )
+    # Collect info for all sensors
+    site_names = []
+    lons = []
+    lats = []
 
+    for capteur_id in id_capteur:
+        capteur_data = request_microspot(
+            observationTypeCodes=[ISO[polluant]],
+            devices=[capteur_id],
+            aggregation="horaire",
+            dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
+        )
+        site_names.append(capteur_data["site_name"].values[0])
+        lons.append(capteur_data["site_lon"].values[0])
+        lats.append(capteur_data["site_lat"].values[0])
+
+    # Add station info
     station_json = request_xr(
         folder="sites",
         sites=nom_station,
     )
+    site_names.append(station_json["labelSite"].values[0])
+    lons.append(station_json["longitude"].values[0])
+    lats.append(station_json["latitude"].values[0])
+
     df = pd.DataFrame(
         data={
-            "site_name": [
-                capteur_data["site_name"].values[0],
-                station_json["labelSite"].values[0],
-            ],
-            "lon": [
-                capteur_data["site_lon"].values[0],
-                station_json["longitude"].values[0],
-            ],
-            "lat": [
-                capteur_data["site_lat"].values[0],
-                station_json["latitude"].values[0],
-            ],
+            "site_name": site_names,
+            "lon": lons,
+            "lat": lats,
         }
     )
 

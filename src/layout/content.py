@@ -144,13 +144,11 @@ def get_content():
 
 @app.callback(
     Output("title_layout", "children"),
-    Input("micro_capteur_sites_dropdown", "value"),
     Input("polluant_dropdown", "value"),
 )
-def build_title(microcapteur: str, poll: str):
-    nom_site = microcapteur.split(" - ")[0]
+def build_title( poll: str):
     return html.B(
-        html.Center(f"Données {poll} du microcapteur {nom_site}"),
+        html.Center(f"Données {poll}"),
     )
 
 
@@ -164,20 +162,23 @@ def build_title(microcapteur: str, poll: str):
     Input("station_xair_dropdown", "value"),
 )
 def generate_map(
-    site_plus_capteur: str,
+    site_plus_capteur: list,
     polluant: str,
     start_date: str,
     end_date: str,
     station_name: str,
 ):
-    cap_name, cap_id = site_plus_capteur.rsplit(" - ", 1)
-    source_select = ["capteur", "station"]
-    names = [cap_name, station_name]
-    # ---------------------------------------------------
-    #                       MAP
-    # ---------------------------------------------------
+    # Prepare lists for names and ids
+    cap_names = []
+    cap_ids = []
+    for cap in site_plus_capteur:
+        name, cid = cap.rsplit(" - ", 1)
+        cap_names.append(name)
+        cap_ids.append(int(cid))
+
+    # Get geo data for all sensors and station
     gdf = get_geoDF(
-        id_capteur=int(cap_id),
+        id_capteur=cap_ids,  # Assuming get_geoDF can handle a list of ids
         polluant=polluant,
         start_date=start_date,
         end_date=end_date,
@@ -186,21 +187,31 @@ def generate_map(
 
     fig_map = go.Figure(layout=dict(height=600, width=800))
 
-    # zoom, center = get_zoom_level_and_center(
-    #     longitudes=gdf['lon'].values,
-    #     latitudes=gdf['lat'].values
-    # )
-
-    for i in gdf.index:
+    # Add microcapteur markers
+    for i, cap_id in enumerate(cap_ids):
+        # Assuming gdf has one row per capteur and one for station
+        row = gdf.iloc[i]
         fig_map.add_trace(
             go.Scattermapbox(
-                lat=[gdf.geometry.y[i]],
-                lon=[gdf.geometry.x[i]],
-                name=f"{names[i]}",
+                lat=[row.geometry.y],
+                lon=[row.geometry.x],
+                name=f"{cap_names[i]}",
                 mode="markers",
-                marker=dict(size=15, color=COLORS["markers"][source_select[i]]),
+                marker=dict(size=15, color=COLORS["markers"]["capteur"]),
             )
         )
+
+    # Add station marker (assumed last row in gdf)
+    station_row = gdf.iloc[-1]
+    fig_map.add_trace(
+        go.Scattermapbox(
+            lat=[station_row.geometry.y],
+            lon=[station_row.geometry.x],
+            name=station_name,
+            mode="markers",
+            marker=dict(size=15, color=COLORS["markers"]["station"]),
+        )
+    )
 
     fig_map.update_layout(
         images=[
@@ -244,14 +255,11 @@ def generate_map(
 def build_graphs(
     start_date: np.datetime64,
     end_date: np.datetime64,
-    site_plus_capteur: str,
+    site_plus_capteur: list,
     polluant: str,
     station_name: str = None,
     aggregation: str = "quart-horaire",
 ):
-    print(site_plus_capteur.rsplit(" - ", 1))
-    cap_name = site_plus_capteur.rsplit(" - ", 1)[0]
-    cap_id = int(site_plus_capteur.rsplit(" - ", 1)[1])
     watermark = [
         dict(
             source="./assets/logo_atmosud_inspirer_web.png",
@@ -266,26 +274,8 @@ def build_graphs(
             opacity=0.08,
         )
     ]
-    #####################################################
-    #                 GET DATA                          #
-    #####################################################
 
-    capteur_quart_data = request_microspot(
-        observationTypeCodes=[ISO[polluant]],
-        devices=[cap_id],
-        aggregation="quart-horaire",
-        dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
-    )
-    capteur_quart_data = capteur_quart_data[capteur_quart_data.isoCode == ISO[polluant]]
-
-    capteur_hour_data = request_microspot(
-        observationTypeCodes=[ISO[polluant]],
-        devices=[cap_id],
-        aggregation="horaire",
-        dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
-    )
-    capteur_hour_data = capteur_hour_data[capteur_quart_data.isoCode == ISO[polluant]]
-
+    # Fetch station data once
     station_quart_data = wrap_xair_request(
         fromtime=start_date,
         totime=end_date,
@@ -294,7 +284,6 @@ def build_graphs(
         physicals=ISO[polluant],
         datatype="quart-horaire",
     )
-
     station_hour_data = wrap_xair_request(
         fromtime=start_date,
         totime=end_date,
@@ -303,57 +292,63 @@ def build_graphs(
         physicals=ISO[polluant],
         datatype="horaire",
     )
-
-    # After fetching your dataframes (capteur_quart_data, station_quart_data, etc.)
-
-    # Rename columns for clarity
     station_col_name = "station"
-    micro_col_name = f"microcapteur_{cap_id}"  # or use cap_name if you prefer
-
-    # For hourly data
-    capteur_hour_data = capteur_hour_data.rename(
-        columns={"valueModified": micro_col_name}
-    )
-    station_hour_data = station_hour_data.rename(columns={"value": station_col_name})
-    hour_data = pd.concat(
-        [station_hour_data[station_col_name], capteur_hour_data[micro_col_name]], axis=1
-    )
-
-    # For quart-horaire data
-    capteur_quart_data = capteur_quart_data.rename(columns={"valueRaw": micro_col_name})
     station_quart_data = station_quart_data.rename(columns={"value": station_col_name})
-    quart_data = pd.concat(
-        [station_quart_data[station_col_name], capteur_quart_data[micro_col_name]],
-        axis=1,
-    )
+    station_hour_data = station_hour_data.rename(columns={"value": station_col_name})
 
-    # Now, graph_data will always have columns: ["station", "microcapteur_<id>"]
-    if aggregation == "horaire":
-        graph_data = hour_data
-    else:
-        graph_data = quart_data
+    # Prepare dataframes for all selected sensors
+    capteur_quart_dfs = []
+    capteur_hour_dfs = []
+    summary_rows = []
 
+    for capteur in site_plus_capteur:
+        cap_name, cap_id = capteur.rsplit(" - ", 1)
+        cap_id = int(cap_id)
+        micro_col_name = f"microcapteur_{cap_id}"
 
+        capteur_quart_data = request_microspot(
+            observationTypeCodes=[ISO[polluant]],
+            devices=[cap_id],
+            aggregation="quart-horaire",
+            dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
+        )
+        capteur_quart_data = capteur_quart_data[capteur_quart_data.isoCode == ISO[polluant]]
+        capteur_quart_data = capteur_quart_data.rename(columns={"valueRaw": micro_col_name})
+        capteur_quart_dfs.append(capteur_quart_data[[micro_col_name]])
+
+        capteur_hour_data = request_microspot(
+            observationTypeCodes=[ISO[polluant]],
+            devices=[cap_id],
+            aggregation="horaire",
+            dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
+        )
+        capteur_hour_data = capteur_hour_data[capteur_hour_data.isoCode == ISO[polluant]]
+        capteur_hour_data = capteur_hour_data.rename(columns={"valueModified": micro_col_name})
+        capteur_hour_dfs.append(capteur_hour_data[[micro_col_name]])
+
+    # Concatenate all microcapteur columns with station data
+    quart_data = pd.concat([station_quart_data[station_col_name]] + capteur_quart_dfs, axis=1)
+    hour_data = pd.concat([station_hour_data[station_col_name]] + capteur_hour_dfs, axis=1)
+    graph_data = hour_data if aggregation == "horaire" else quart_data
+
+    # Diurnal cycle and color map
     if aggregation == "quart-horaire":
         dcycle_xticks_div = 2
-    if aggregation == "horaire":
+    else:
         dcycle_xticks_div = 1
+
+    color_map = get_color_map(graph_data.columns)
 
     # -------------------------------------
     #           DIURNAL CYCLE DATA
     # -------------------------------------
 
-    capteur_value_var = f"microcapteur_{cap_id}"
 
     week_diurnal_cycle_data = weekday_profile(
-        aggregation=aggregation,
-        capteur_value_var=capteur_value_var,
         data=graph_data,
         week_section="workweek",
     )
     wend_diurnal_cycle_data = weekday_profile(
-        aggregation=aggregation,
-        capteur_value_var=capteur_value_var,
         data=graph_data,
         week_section="weekend",
     )
@@ -589,89 +584,3 @@ def build_graphs(
         columns,
         data,
     )
-
-
-@app.callback(
-    Output("micro_capteur_info", "children"),
-    Input("micro_capteur_sites_dropdown", "value"),
-)
-def get_micro_capteur_info(nom_site: str):
-    return None
-    # json_data = request_api_observations(
-    #     folder_key='sites',
-    #     nom_site=nom_site.split(" - ")[0],
-    #     format='json',
-    #     download='false',
-    # )
-
-    # return html.P([
-    #     # html.B("id_site: "),
-    #     # html.H6(f"{json_data['id_site'].values[0]}"),
-    #     html.B("Nom du site: "),
-    #     html.H6(f"{json_data['nom_site'].values[0]}"),
-    #     # html.B("type_site:"),
-    #     # html.H6(f"{json_data['type_site'].values[0]}"),
-    #     html.B("Influence: "),
-    #     html.H6(f"{json_data['influence'].values[0]}"),
-    #     html.B("Longitude: "),
-    #     html.H6(f"{json_data['lon'].values[0]: 0.4f}"),
-    #     html.B("Latitude: "),
-    #     html.H6(f"{json_data['lat'].values[0]: 0.4f}"),
-    #     # html.B("date_debut_site: "),
-    #     # html.H6(f"{json_data['date_debut_site'].values[0].split('T')[0]}"),
-    #     # html.B("date_fin_site: "),
-    #     # html.H6(f"{json_data['date_fin_site'].values[0].split('T')[0]}"),
-    #     # html.B("ID campagne: "),
-    #     # html.H6(f"{json_data['id_campagne'].values[0]}"),
-    #     html.B("Nom campagne: "),
-    #     html.H6(f"{json_data['nom_campagne'].values[0]}"),
-    #     # html.B("ID capteur: "),
-    #     # html.H6(f"{json_data['id_capteur'].values[0]}"),
-    #     html.B("Marque capteur: "),
-    #     html.H6(f"{json_data['marque_capteur'].values[0]}"),
-    #     # html.B("Modele capteur : "),
-    #     # html.H6(f"{json_data['modele_capteur'].values[0]}"),
-    #     html.B("Variables: "),
-    #     html.H6("PM10, PM2.5 et PM1"),
-    #     ]
-    # )
-
-
-@app.callback(
-    Output("station_info", "children"),
-    Input("station_xair_dropdown", "value"),
-)
-def get_station_info(nom_site: str):
-
-    json_data = request_xr(
-        folder="sites",
-        sites=nom_site,
-    )
-
-    return None
-    # return html.P([
-    #     # html.B("id_site:"),
-    #     # html.H6(f"{json_data['id'].values[0]}"),
-    #     html.B("Nom site: "),
-    #     html.H6(f"{json_data['labelSite'].values[0]}"),
-    #     # html.B("type_site: "),
-    #     # html.H6("Fixe"),
-    #     html.B("Influence: "),
-    #     # html.H6(f"{json_data['locationTypeLabel'].values[0]}"),
-    #     html.B("Longitude: "),
-    #     html.H6(f"{json_data['longitude'].values[0]: 0.4f}"),
-    #     html.H6(f"{json_data['latitude'].values[0]: 0.4f}"),
-    #     # html.B("date_debut_site: "),
-    #     # html.H6(f"{str(json_data['startDate'].values[0]).split('T')[0]}"),
-    #     # html.B("date_fin_site: "),
-    #     # html.H6(f"{str(json_data['stopDate'].values[0]).split('T')[0]}"),
-    #     html.B("Department: "),
-    #     html.H6(f"{json_data['labelDepartment'].values[0]}"),
-    #     html.B("Commune: "),
-    #     html.H6(f"{json_data['labelCommune'].values[0]}"),
-    #     html.B("Environment: "),
-    #     # html.H6(f"{json_data['classTypeLabel'].values[0]}"),
-    #     html.B("Activité de la Zone: "),
-    #     # html.H6(f"{json_data['zoneOfActivityLabel'].values[0]}"),
-    #     ]
-    # )

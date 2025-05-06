@@ -81,6 +81,7 @@ def get_sidebar():
                     dcc.Dropdown(
                         id="micro_capteur_sites_dropdown",
                         className="dropUp",
+                        multi=True,  # Allow multiple selections
                         style={"border": "0", "background": "transparent"},
                     )
                 ]
@@ -137,8 +138,7 @@ def get_capteur_site_dropdown(
     poll: str,
     start_date: str,
     end_date: str,
-) -> list:
-
+):
     data = request_microspot(
         observationTypeCodes=[ISO[poll]],
         dateRange=[
@@ -151,5 +151,8 @@ def get_capteur_site_dropdown(
     data["site_capteurID"] = data.apply(
         lambda row: f"{row['site_name']} - {row['capteur_id']}", axis=1
     )
+    options = [{"label": v, "value": v} for v in data["site_capteurID"].unique()]
+    # select first value by default
+    values = [data["site_capteurID"].unique()[0]]
 
-    return (data["site_capteurID"].unique(), data["site_capteurID"].unique()[0])
+    return options, values
