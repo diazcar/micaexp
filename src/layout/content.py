@@ -10,7 +10,7 @@ from src.fonctions import (
     get_stats,
     graph_title,
     weekday_profile,
-    get_color_map
+    get_color_map,
 )
 from src.glob_vars import COLORS, SEUILS, UNITS
 from src.layout.styles import CONTENT_STYLE
@@ -59,7 +59,6 @@ def get_content():
                                     dcc.Graph(
                                         figure={},
                                         id="diurnal_cycle_workweek",
-                                        style=dict(height="30vh"),
                                     )
                                 ],
                                 width=6,
@@ -69,7 +68,6 @@ def get_content():
                                     dcc.Graph(
                                         figure={},
                                         id="diurnal_cycle_weekend",
-                                        style=dict(height="30vh"),
                                     )
                                 ],
                                 width=6,
@@ -98,14 +96,16 @@ def get_content():
                                     html.Br(),
                                     html.Br(),
                                     dcc.Graph(figure={}, id="boxplot"),
+                                    dcc.Graph(
+                                        figure={}, id="map"
+                                    ),  # Map now below the boxplot
                                 ],
-                                width=7,
+                                width=12,
                             ),
+                            # Optionally, you can remove the second column or leave it empty
                             dbc.Col(
-                                [
-                                    dcc.Graph(figure={}, id="map"),
-                                ],
-                                width=5,
+                                [],
+                                width=12,
                             ),
                         ]
                     ),
@@ -146,7 +146,7 @@ def get_content():
     Output("title_layout", "children"),
     Input("polluant_dropdown", "value"),
 )
-def build_title( poll: str):
+def build_title(poll: str):
     return html.B(
         html.Center(f"Données {poll}"),
     )
@@ -312,8 +312,12 @@ def build_graphs(
             aggregation="quart-horaire",
             dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
         )
-        capteur_quart_data = capteur_quart_data[capteur_quart_data.isoCode == ISO[polluant]]
-        capteur_quart_data = capteur_quart_data.rename(columns={"valueRaw": micro_col_name})
+        capteur_quart_data = capteur_quart_data[
+            capteur_quart_data.isoCode == ISO[polluant]
+        ]
+        capteur_quart_data = capteur_quart_data.rename(
+            columns={"valueRaw": micro_col_name}
+        )
         capteur_quart_dfs.append(capteur_quart_data[[micro_col_name]])
 
         capteur_hour_data = request_microspot(
@@ -322,13 +326,21 @@ def build_graphs(
             aggregation="horaire",
             dateRange=[f"{start_date}T00:00:00+00:00", f"{end_date}T00:00:00+00:00"],
         )
-        capteur_hour_data = capteur_hour_data[capteur_hour_data.isoCode == ISO[polluant]]
-        capteur_hour_data = capteur_hour_data.rename(columns={"valueModified": micro_col_name})
+        capteur_hour_data = capteur_hour_data[
+            capteur_hour_data.isoCode == ISO[polluant]
+        ]
+        capteur_hour_data = capteur_hour_data.rename(
+            columns={"valueModified": micro_col_name}
+        )
         capteur_hour_dfs.append(capteur_hour_data[[micro_col_name]])
 
     # Concatenate all microcapteur columns with station data
-    quart_data = pd.concat([station_quart_data[station_col_name]] + capteur_quart_dfs, axis=1)
-    hour_data = pd.concat([station_hour_data[station_col_name]] + capteur_hour_dfs, axis=1)
+    quart_data = pd.concat(
+        [station_quart_data[station_col_name]] + capteur_quart_dfs, axis=1
+    )
+    hour_data = pd.concat(
+        [station_hour_data[station_col_name]] + capteur_hour_dfs, axis=1
+    )
     graph_data = hour_data if aggregation == "horaire" else quart_data
 
     # Diurnal cycle and color map
@@ -342,7 +354,6 @@ def build_graphs(
     # -------------------------------------
     #           DIURNAL CYCLE DATA
     # -------------------------------------
-
 
     week_diurnal_cycle_data = weekday_profile(
         data=graph_data,
@@ -393,15 +404,20 @@ def build_graphs(
         title=graph_title("timeseries", aggregation, polluant),
         title_x=0.5,
         images=watermark,
-        # xaxis_title=f"{aggregation}",
         xaxis={"dtick": dtick},
         yaxis_title=f"{polluant} {UNITS[polluant]}",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.2,
+            xanchor="center",
+            x=0.5,
+        ),
         margin=dict(
             b=0,
             l=0,
             r=0,
-            t=0,
+            t=60,  # <-- Increased top margin for title visibility
         ),
         yaxis_range=[0, y_max + y_max * 0.05],
     )
@@ -432,12 +448,18 @@ def build_graphs(
             tickangle=90,
         ),
         yaxis_title=f"{polluant} {UNITS[polluant]}",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.2,
+            xanchor="center",
+            x=0.5,
+        ),
         margin=dict(
             b=0,
             l=0,
             r=0,
-            t=80,
+            t=60,  # Increased top margin for title visibility
         ),
         yaxis_range=[0, y_max],
     )
@@ -468,12 +490,18 @@ def build_graphs(
             tickangle=90,
         ),
         yaxis_title=f"{polluant} {UNITS[polluant]}",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.2,
+            xanchor="center",
+            x=0.5,
+        ),
         margin=dict(
             b=0,
             l=0,
             r=0,
-            t=80,
+            t=60,  # Increased top margin for title visibility
         ),
         yaxis_range=[0, y_max],
     )
