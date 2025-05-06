@@ -97,6 +97,9 @@ def get_content():
                                     html.Br(),
                                     dcc.Graph(figure={}, id="boxplot"),
                                     dcc.Graph(
+                                        figure={}, id="correlation_matrix"
+                                    ),  # Add this line
+                                    dcc.Graph(
                                         figure={}, id="map"
                                     ),  # Map now below the boxplot
                                 ],
@@ -243,6 +246,7 @@ def generate_map(
     Output("diurnal_cycle_workweek", "figure"),
     Output("diurnal_cycle_weekend", "figure"),
     Output("boxplot", "figure"),
+    Output("correlation_matrix", "figure"),  # Add this line
     Output("summary_table", "columns"),
     Output("summary_table", "data"),
     Input("my-date-picker-range", "start_date"),
@@ -560,6 +564,30 @@ def build_graphs(
         yaxis_range=[0, 100],
         # yaxis_range=[0, y_max+y_max*.05]
     )
+
+    # Compute correlation matrix
+    corr_matrix = graph_data.corr()
+
+    # Create heatmap figure
+    fig_corr = go.Figure(
+        data=go.Heatmap(
+            z=corr_matrix.values,
+            x=corr_matrix.columns,
+            y=corr_matrix.index,
+            colorscale="Viridis",
+            zmin=-1,
+            zmax=1,
+            colorbar=dict(title="Correlation"),
+        )
+    )
+    fig_corr.update_layout(
+        title="Matrice de corrélation",
+        title_x=0.5,
+        margin=dict(t=60, b=40, l=0, r=0),
+        xaxis=dict(tickangle=45),
+        yaxis=dict(autorange="reversed"),
+    )
+
     # ---------------------------------------------------
     #         SEUILS DE REFERENCE INFO
     # ---------------------------------------------------
@@ -609,6 +637,7 @@ def build_graphs(
         week_diurnal_cycle_fig,
         wend_diurnal_cycle_fig,
         fig_boxplot,
+        fig_corr,  # Add this to the return
         columns,
         data,
     )
