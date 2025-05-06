@@ -175,7 +175,6 @@ def get_geoDF(
     end_date: str,
     nom_station: str,
 ):
-
     # Collect info for all sensors
     site_names = []
     lons = []
@@ -192,14 +191,15 @@ def get_geoDF(
         lons.append(capteur_data["site_lon"].values[0])
         lats.append(capteur_data["site_lat"].values[0])
 
-    # Add station info
-    station_json = request_xr(
-        folder="sites",
-        sites=nom_station,
-    )
-    site_names.append(station_json["labelSite"].values[0])
-    lons.append(station_json["longitude"].values[0])
-    lats.append(station_json["latitude"].values[0])
+    # Add station info only if provided
+    if nom_station:
+        station_json = request_xr(
+            folder="sites",
+            sites=nom_station,
+        )
+        site_names.append(station_json["labelSite"].values[0])
+        lons.append(station_json["longitude"].values[0])
+        lats.append(station_json["latitude"].values[0])
 
     df = pd.DataFrame(
         data={

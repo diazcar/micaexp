@@ -192,7 +192,6 @@ def generate_map(
 
     # Add microcapteur markers
     for i, cap_id in enumerate(cap_ids):
-        # Assuming gdf has one row per capteur and one for station
         row = gdf.iloc[i]
         fig_map.add_trace(
             go.Scattermapbox(
@@ -204,17 +203,18 @@ def generate_map(
             )
         )
 
-    # Add station marker (assumed last row in gdf)
-    station_row = gdf.iloc[-1]
-    fig_map.add_trace(
-        go.Scattermapbox(
-            lat=[station_row.geometry.y],
-            lon=[station_row.geometry.x],
-            name=station_name,
-            mode="markers",
-            marker=dict(size=15, color=COLORS["markers"]["station"]),
+    # Add station marker only if station_name is provided and present in gdf
+    if station_name and len(gdf) > len(cap_ids):
+        station_row = gdf.iloc[-1]
+        fig_map.add_trace(
+            go.Scattermapbox(
+                lat=[station_row.geometry.y],
+                lon=[station_row.geometry.x],
+                name=station_name,
+                mode="markers",
+                marker=dict(size=15, color=COLORS["markers"]["station"]),
+            )
         )
-    )
 
     fig_map.update_layout(
         images=[
@@ -279,31 +279,39 @@ def build_graphs(
         )
     ]
 
-    # Fetch station data once
-    station_quart_data = wrap_xair_request(
-        fromtime=start_date,
-        totime=end_date,
-        keys="data",
-        sites=station_name,
-        physicals=ISO[polluant],
-        datatype="quart-horaire",
-    )
-    station_hour_data = wrap_xair_request(
-        fromtime=start_date,
-        totime=end_date,
-        keys="data",
-        sites=station_name,
-        physicals=ISO[polluant],
-        datatype="horaire",
-    )
-    station_col_name = "station"
-    station_quart_data = station_quart_data.rename(columns={"value": station_col_name})
-    station_hour_data = station_hour_data.rename(columns={"value": station_col_name})
+    # Fetch station data only if station_name is provided
+    if station_name:
+        station_quart_data = wrap_xair_request(
+            fromtime=start_date,
+            totime=end_date,
+            keys="data",
+            sites=station_name,
+            physicals=ISO[polluant],
+            datatype="quart-horaire",
+        )
+        station_hour_data = wrap_xair_request(
+            fromtime=start_date,
+            totime=end_date,
+            keys="data",
+            sites=station_name,
+            physicals=ISO[polluant],
+            datatype="horaire",
+        )
+        station_col_name = "station"
+        station_quart_data = station_quart_data.rename(
+            columns={"value": station_col_name}
+        )
+        station_hour_data = station_hour_data.rename(
+            columns={"value": station_col_name}
+        )
+    else:
+        station_quart_data = None
+        station_hour_data = None
+        station_col_name = None
 
     # Prepare dataframes for all selected sensors
     capteur_quart_dfs = []
     capteur_hour_dfs = []
-    summary_rows = []
 
     for capteur in site_plus_capteur:
         cap_name, cap_id = capteur.rsplit(" - ", 1)
@@ -338,13 +346,18 @@ def build_graphs(
         )
         capteur_hour_dfs.append(capteur_hour_data[[micro_col_name]])
 
-    # Concatenate all microcapteur columns with station data
-    quart_data = pd.concat(
-        [station_quart_data[station_col_name]] + capteur_quart_dfs, axis=1
-    )
-    hour_data = pd.concat(
-        [station_hour_data[station_col_name]] + capteur_hour_dfs, axis=1
-    )
+    # Concatenate all microcapteur columns with station data if present
+    if station_name and station_quart_data is not None:
+        quart_data = pd.concat(
+            [station_quart_data[station_col_name]] + capteur_quart_dfs, axis=1
+        )
+        hour_data = pd.concat(
+            [station_hour_data[station_col_name]] + capteur_hour_dfs, axis=1
+        )
+    else:
+        quart_data = pd.concat(capteur_quart_dfs, axis=1)
+        hour_data = pd.concat(capteur_hour_dfs, axis=1)
+
     graph_data = hour_data if aggregation == "horaire" else quart_data
 
     # Diurnal cycle and color map
@@ -612,8 +625,10 @@ def build_graphs(
 
     # For each microcapteur
     for i, col in enumerate(graph_data.columns):
-        name = "Station" if col == "station" else col
-        stats = get_stats(hour_data=hour_data[[col]], minmax_data=hour_data[[col]], poll=polluant)
+        name = "Station" if station_name and col == "station" else col
+        stats = get_stats(
+            hour_data=hour_data[[col]], minmax_data=hour_data[[col]], poll=polluant
+        )
         (
             count_seuil_information,
             count_seuil_alert,
@@ -626,12 +641,22 @@ def build_graphs(
 
         summary_dict["Nom"].append(name)
         summary_dict["Moyenne période (µg/m³)"].append(f"{moyenne_periode[0]:.0f}")
-        summary_dict["Min / Max horaire (µg/m³)"].append(f"{min_periode[0]:.0f} / {max_periode[0]:.0f}")
-        summary_dict[f"Dépassements seuil info ({seuil_information} µg/m³/24h)"].append(f"{count_seuil_information[0]}")
-        summary_dict[f"Dépassements seuil alerte ({seuil_alert} µg/m³/24h)"].append(f"{count_seuil_alert[0]}")
+        summary_dict["Min / Max horaire (µg/m³)"].append(
+            f"{min_periode[0]:.0f} / {max_periode[0]:.0f}"
+        )
+        summary_dict[f"Dépassements seuil info ({seuil_information} µg/m³/24h)"].append(
+            f"{count_seuil_information[0]}"
+        )
+        summary_dict[f"Dépassements seuil alerte ({seuil_alert} µg/m³/24h)"].append(
+            f"{count_seuil_alert[0]}"
+        )
 
     summary_df = pd.DataFrame(summary_dict)
-    summary_df = summary_df.set_index("Nom").T.reset_index().rename(columns={"index": "Statistique"})
+    summary_df = (
+        summary_df.set_index("Nom")
+        .T.reset_index()
+        .rename(columns={"index": "Statistique"})
+    )
 
     columns = [{"name": col, "id": col} for col in summary_df.columns]
     data = summary_df.to_dict("records")
