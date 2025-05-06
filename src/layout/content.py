@@ -358,20 +358,6 @@ def build_graphs(
         week_section="weekend",
     )
 
-    # Dynamically generate color map
-    def get_color_map(columns):
-        # Always assign station to firebrick, others get Plotly's default colors
-        default_colors = plotly.colors.qualitative.Plotly
-        color_map = {}
-        color_iter = iter(default_colors)
-        for col in columns:
-            if col == "station":
-                color_map[col] = "firebrick"
-            else:
-                color_map[col] = next(color_iter)
-        return color_map
-
-    # After graph_data is defined
     color_map = get_color_map(graph_data.columns)
 
     # -------------------------------------
