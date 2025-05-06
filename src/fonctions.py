@@ -34,7 +34,6 @@ def weekday_profile(
         out_data = pd.concat([out_data, grouped_data], axis=1)
     datime_format = "%H:%M:%S"
 
-
     out_data.index.name = "heure"
     out_data.reset_index(inplace=True)
     out_data["heure"] = pd.to_datetime(out_data["heure"], format=datime_format)
@@ -123,6 +122,7 @@ def get_color_map(columns):
             color_map[col] = next(color_iter)
     return color_map
 
+
 def graph_title(
     graph_type: str,
     aggregation: str,
@@ -169,7 +169,7 @@ def validate_and_aggregate(
 
 
 def get_geoDF(
-    id_capteur:list,  # can be int, str, or list
+    id_capteur: list,  # can be int, str, or list
     polluant: str,
     start_date: str,
     end_date: str,
