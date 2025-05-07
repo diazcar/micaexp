@@ -96,6 +96,7 @@ def get_content():
                                     html.Br(),
                                     html.Br(),
                                     dcc.Graph(figure={}, id="boxplot"),
+                                    dcc.Graph(figure={}, id="avg24h"),  # <-- Add this line
                                     dcc.Graph(
                                         figure={}, id="correlation_matrix"
                                     ),  # Add this line
@@ -249,6 +250,7 @@ def generate_map(
     Output("correlation_matrix", "figure"),  # Add this line
     Output("summary_table", "columns"),
     Output("summary_table", "data"),
+    Output("avg24h", "figure"),
     Input("my-date-picker-range", "start_date"),
     Input("my-date-picker-range", "end_date"),
     Input("micro_capteur_sites_dropdown", "value"),
@@ -615,6 +617,59 @@ def build_graphs(
     )
 
     # ---------------------------------------------------
+    #        24H ROLLING MEAN (24h averaged lines)
+    # ---------------------------------------------------
+    fig_24h_avg = go.Figure()
+    if not graph_data.empty:
+        if aggregation == "horaire":
+            window = 24
+        else:  # quart-horaire
+            window = 96
+        rolling_24h = graph_data.rolling(window=window, min_periods=1).mean()
+        for col in rolling_24h.columns:
+            fig_24h_avg.add_trace(
+                go.Scatter(
+                    y=rolling_24h[col],
+                    x=rolling_24h.index,
+                    mode="lines",
+                    line=dict(color=color_map.get(col, None), dash="solid"),
+                    name="Station" if station_name and col == "station" else col,
+                )
+            )
+        # Add seuil lines if relevant
+        if polluant in ["PM10", "PM2.5"]:
+            for seuil in SEUILS[polluant]["FR"]:
+                seuil_value = SEUILS[polluant]["FR"][seuil]
+                fig_24h_avg.add_trace(
+                    go.Scatter(
+                        y=[seuil_value] * len(rolling_24h.index),
+                        x=rolling_24h.index,
+                        name=seuil,
+                        line=dict(color="black", dash="dash"),
+                        showlegend=False,
+                    )
+                )
+                fig_24h_avg.add_annotation(
+                    x=rolling_24h.index[round(len(rolling_24h.index) * 0.1)],
+                    y=seuil_value,
+                    text=seuil,
+                )
+    fig_24h_avg.update_layout(
+        title="Moyenne glissante 24h",
+        title_x=0.5,
+        images=watermark,
+        yaxis_title=f"{polluant} {UNITS[polluant]}",
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.2,
+            xanchor="center",
+            x=0.5,
+        ),
+        margin=dict(b=0, l=0, r=0, t=60),
+    )
+
+    # ---------------------------------------------------
     #         SEUILS DE REFERENCE INFO
     # ---------------------------------------------------
     (
@@ -682,4 +737,5 @@ def build_graphs(
         fig_corr,  # Add this to the return
         columns,
         data,
+        fig_24h_avg,  # Add this to the return
     )
