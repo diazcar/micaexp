@@ -96,7 +96,9 @@ def get_content():
                                     html.Br(),
                                     html.Br(),
                                     dcc.Graph(figure={}, id="boxplot"),
-                                    dcc.Graph(figure={}, id="avg24h"),  # <-- Add this line
+                                    dcc.Graph(
+                                        figure={}, id="avg24h"
+                                    ),  # <-- Add this line
                                     dcc.Graph(
                                         figure={}, id="correlation_matrix"
                                     ),  # Add this line
