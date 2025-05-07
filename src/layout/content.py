@@ -344,6 +344,9 @@ def build_graphs(
         capteur_hour_data = capteur_hour_data.rename(
             columns={"valueModified": micro_col_name}
         )
+        # Patch: ensure column exists, else fill with NaN
+        if micro_col_name not in capteur_hour_data.columns:
+            capteur_hour_data[micro_col_name] = np.nan
         capteur_hour_dfs.append(capteur_hour_data[[micro_col_name]])
 
     # Concatenate all microcapteur columns with station data if present
@@ -355,8 +358,18 @@ def build_graphs(
             [station_hour_data[station_col_name]] + capteur_hour_dfs, axis=1
         )
     else:
-        quart_data = pd.concat(capteur_quart_dfs, axis=1)
-        hour_data = pd.concat(capteur_hour_dfs, axis=1)
+        if not capteur_quart_dfs:
+            # Create empty DataFrame with date index if possible
+            date_index = pd.date_range(start=start_date, end=end_date, freq="15min")
+            quart_data = pd.DataFrame(index=date_index)
+        else:
+            quart_data = pd.concat(capteur_quart_dfs, axis=1)
+
+        if not capteur_hour_dfs:
+            date_index = pd.date_range(start=start_date, end=end_date, freq="H")
+            hour_data = pd.DataFrame(index=date_index)
+        else:
+            hour_data = pd.concat(capteur_hour_dfs, axis=1)
 
     graph_data = hour_data if aggregation == "horaire" else quart_data
 
