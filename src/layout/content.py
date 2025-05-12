@@ -438,8 +438,22 @@ def build_graphs(
         title=graph_title("timeseries", aggregation, polluant),
         title_x=0.5,
         images=watermark,
-        xaxis={"dtick": dtick},
-        yaxis_title=f"{polluant} {UNITS[polluant]}",
+        xaxis=dict(
+            dtick=dtick,
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
+        ),
+        yaxis=dict(
+            title=f"{polluant} {UNITS[polluant]}",
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
+        ),
+        plot_bgcolor="#f9f9f9",
+        paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(
             orientation="h",
             yanchor="top",
@@ -480,8 +494,20 @@ def build_graphs(
             tick0=week_diurnal_cycle_data.index[1],
             tickformat="%H:%M",
             tickangle=90,
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
         ),
-        yaxis_title=f"{polluant} {UNITS[polluant]}",
+        yaxis=dict(
+            title=f"{polluant} {UNITS[polluant]}",
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
+        ),
+        plot_bgcolor="#f9f9f9",
+        paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(
             orientation="h",
             yanchor="top",
@@ -522,8 +548,20 @@ def build_graphs(
             nticks=round(len(week_diurnal_cycle_data.index) / dcycle_xticks_div),
             tickformat="%H:%M",
             tickangle=90,
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
         ),
-        yaxis_title=f"{polluant} {UNITS[polluant]}",
+        yaxis=dict(
+            title=f"{polluant} {UNITS[polluant]}",
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
+        ),
+        plot_bgcolor="#f9f9f9",
+        paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(
             orientation="h",
             yanchor="top",
@@ -579,12 +617,13 @@ def build_graphs(
         title_x=0.5,
         images=watermark,
         yaxis=dict(
-            title=f"{polluant} {UNITS[polluant]}",
-            # tickvals=ytick_vals,
+            title=f"{polluant} {UNITS[polluant]}"
         ),
         xaxis_title="",
         xaxis2_showticklabels=False,
         showlegend=False,
+        plot_bgcolor="#f9f9f9",
+        paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(
             b=0,
             l=0,
@@ -614,8 +653,22 @@ def build_graphs(
         title="Matrice de corrélation",
         title_x=0.5,
         margin=dict(t=60, b=40, l=0, r=0),
-        xaxis=dict(tickangle=45),
-        yaxis=dict(autorange="reversed"),
+        xaxis=dict(
+            tickangle=45,
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
+        ),
+        yaxis=dict(
+            autorange="reversed",
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
+        ),
+        plot_bgcolor="#f9f9f9",
+        paper_bgcolor="rgba(0,0,0,0)",
     )
 
     # ---------------------------------------------------
@@ -660,7 +713,20 @@ def build_graphs(
         title="Moyenne glissante 24h",
         title_x=0.5,
         images=watermark,
-        yaxis_title=f"{polluant} {UNITS[polluant]}",
+        xaxis=dict(
+            dtick=graph_data.index[1] - graph_data.index[0],
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
+        ),
+        yaxis=dict(
+            title=f"{polluant} {UNITS[polluant]}",
+            showgrid=True,
+            gridcolor="#cccccc",
+            gridwidth=1.5,  # <--- increased gridwidth
+            zeroline=False,
+        ),
         legend=dict(
             orientation="h",
             yanchor="top",
@@ -668,6 +734,8 @@ def build_graphs(
             xanchor="center",
             x=0.5,
         ),
+        plot_bgcolor="#f9f9f9",
+        paper_bgcolor="rgba(0,0,0,0)",
         margin=dict(b=0, l=0, r=0, t=60),
     )
 
