@@ -6,10 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATA_AGG_DIC = {
-    'quart-horaire': '15 m',
-    'horaire': '1 h'
-}
+DATA_AGG_DIC = {"quart-horaire": "15 m", "horaire": "1 h"}
 
 
 def add_columns_info(
@@ -29,30 +26,30 @@ def add_columns_info(
         _description_
     """
 
-    capteur_id = capteur_info['id']
-    capteur_scaninterval = capteur_info['scanInterval']
+    capteur_id = capteur_info["id"]
+    capteur_scaninterval = capteur_info["scanInterval"]
 
-    campaign_id = campaign_info['id']
-    campaign_name = campaign_info['campaign.name']
-    if 'location' in campaign_info.index and campaign_info['location'] == None:
+    campaign_id = campaign_info["id"]
+    campaign_name = campaign_info["campaign.name"]
+    if "location" in campaign_info.index and campaign_info["location"] == None:
         site_id = None
         site_name = None
         site_lon = None
         site_lat = None
     else:
-        site_id = campaign_info['location.id']
-        site_name = campaign_info['location.name']
-        site_lon = campaign_info['location.position'][1]
-        site_lat = campaign_info['location.position'][0]
+        site_id = campaign_info["location.id"]
+        site_name = campaign_info["location.name"]
+        site_lon = campaign_info["location.position"][1]
+        site_lat = campaign_info["location.position"][0]
 
-    observations['capteur_id'] = capteur_id
-    observations['ScanInterval'] = capteur_scaninterval
-    observations['campaign_id'] = campaign_id
-    observations['campaign_name'] = campaign_name
-    observations['site_id'] = site_id
-    observations['site_name'] = site_name
-    observations['site_lon'] = site_lon
-    observations['site_lat'] = site_lat
+    observations["capteur_id"] = capteur_id
+    observations["ScanInterval"] = capteur_scaninterval
+    observations["campaign_id"] = campaign_id
+    observations["campaign_name"] = campaign_name
+    observations["site_id"] = site_id
+    observations["site_name"] = site_name
+    observations["site_lon"] = site_lon
+    observations["site_lat"] = site_lat
 
 
 def response_to_dataframe(
@@ -71,11 +68,11 @@ def response_to_dataframe(
 
     for i_capteur in range(len(capteurs.index)):
 
-        campaigns = pd.json_normalize(capteurs.iloc[i_capteur]['datastreams'])
+        campaigns = pd.json_normalize(capteurs.iloc[i_capteur]["datastreams"])
 
         for i_campaign in range(len(campaigns.index)):
 
-            observations = pd.json_normalize(campaigns.iloc[i_campaign]['observations'])
+            observations = pd.json_normalize(campaigns.iloc[i_campaign]["observations"])
 
             add_columns_info(
                 observations=observations,
@@ -85,30 +82,27 @@ def response_to_dataframe(
 
         data = pd.concat([data, observations])
 
-    data.rename(columns={'happenedAt': 'date'}, inplace=True)
-    data['date'] = (
-        pd.to_datetime(data['date'])
+    data.rename(columns={"happenedAt": "date"}, inplace=True)
+    data["date"] = (
+        pd.to_datetime(data["date"])
         .dt.tz_convert("UTC")
         .dt.tz_localize(None)
         # .dt.tz_convert(None)
-        )
+    )
     data.reset_index(inplace=True)
-    data.set_index('date', inplace=True)
+    data.set_index("date", inplace=True)
 
     return data
 
 
 def request_microspot(
     aggregation: str,
-    timezone: str = "Africa/Maputo",
+    timezone: str = "Europe/Paris",
     studies: list = [],
     campaigns: list = [],
     observationTypeCodes: list = ["24"],
     devices: list[int] = [],
-    dateRange: list = [
-        "2024-01-01T01:00:00+00:00",
-        "2024-01-30T01:00:00+00:00"
-    ],
+    dateRange: list = ["2024-01-01T01:00:00+00:00", "2024-01-30T01:00:00+00:00"],
     url: str = "https://spot.atmo-france.org/export-api/observations",
     headers: dict = {
         "Authorization": f"Bearer {os.getenv('MICROSPOT_REQUEST_KEY')}",
