@@ -193,16 +193,21 @@ def generate_map(
 
     fig_map = go.Figure(layout=dict(height=600, width=800))
 
-    # Add microcapteur markers
+    # Use a color palette for unique colors
+    palette = plotly.colors.qualitative.Plotly
+    n_colors = len(palette)
+
+    # Add microcapteur markers with unique colors and ID in legend
     for i, cap_id in enumerate(cap_ids):
         row = gdf.iloc[i]
+        color = palette[i % n_colors]  # Cycle through palette if more sensors than colors
         fig_map.add_trace(
             go.Scattermapbox(
                 lat=[row.geometry.y],
                 lon=[row.geometry.x],
-                name=f"{cap_names[i]}",
+                name=f"Capteur {cap_id}",  # ID in legend
                 mode="markers",
-                marker=dict(size=15, color=COLORS["markers"]["capteur"]),
+                marker=dict(size=15, color=color),
             )
         )
 
@@ -220,21 +225,8 @@ def generate_map(
         )
 
     fig_map.update_layout(
-        images=[
-            dict(
-                source="./assets/logo_atmosud_inspirer_web.png",
-                xref="paper",
-                yref="paper",
-                x=0.5,
-                y=0.2,
-                sizex=0.5,
-                sizey=0.5,
-                xanchor="center",
-                yanchor="bottom",
-                opacity=0.08,
-            )
-        ],
-        mapbox_style="open-street-map",
+        mapbox_style="satellite-streets",
+        mapbox_accesstoken="pk.eyJ1IjoibHVjYXNoZWlucnkiLCJhIjoiY21hcGR0emloMGhhMTJpcjNobnlnNjg2YyJ9.SHuOyKk5vzAZm6896SdnYA",
         mapbox_zoom=6.5,
         mapbox_center=dict(lon=6, lat=44),
         autosize=True,
