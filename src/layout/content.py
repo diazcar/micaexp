@@ -715,7 +715,9 @@ def build_graphs(
 
      # Get geo data for all sensors and station
     # Only take columns corresponding to capteurs (exclude "station" if present)
+    # only take last digits of the column names
     cap_ids = [col for col in graph_data.columns if col != "station"]
+    cap_ids = [int(col.split("_")[-1]) for col in cap_ids]
     gdf = get_geoDF(
         id_capteur=cap_ids,  # Only capteur ids
         polluant=polluant,
@@ -727,21 +729,24 @@ def build_graphs(
     fig_map = go.Figure(layout=dict(height=600, width=800))
 
     # Add microcapteur markers with unique colors and ID in legend
-    for i, cap_id in enumerate(graph_data.columns):
-        row = gdf.iloc[i]
-        color = color_map[cap_id] 
+    # Only capteur columns (not "station")
+    capteur_cols = [col for col in graph_data.columns if col != "station"]
+
+    for idx, cap_id in enumerate(capteur_cols):
+        row = gdf.iloc[idx]
+        color = color_map[cap_id]
         fig_map.add_trace(
             go.Scattermapbox(
                 lat=[row.geometry.y],
                 lon=[row.geometry.x],
-                name=f"Capteur {cap_id}",  # ID in legend
+                name=f"{cap_id}",  # ID in legend
                 mode="markers",
                 marker=dict(size=15, color=color),
             )
         )
 
     # Add station marker only if station_name is provided and present in gdf
-    if station_name and len(gdf) > len(cap_ids):
+    if station_name and len(gdf) > len(capteur_cols):
         station_row = gdf.iloc[-1]
         fig_map.add_trace(
             go.Scattermapbox(
