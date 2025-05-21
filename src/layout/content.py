@@ -157,85 +157,6 @@ def build_title(poll: str):
         html.Center(f"Données {poll}"),
     )
 
-
-@app.callback(
-    # Output('map_img', 'src'),
-    Output("map", "figure"),
-    Input("micro_capteur_sites_dropdown", "value"),
-    Input("polluant_dropdown", "value"),
-    Input("my-date-picker-range", "start_date"),
-    Input("my-date-picker-range", "end_date"),
-    Input("station_xair_dropdown", "value"),
-)
-def generate_map(
-    site_plus_capteur: list,
-    polluant: str,
-    start_date: str,
-    end_date: str,
-    station_name: str,
-):
-    # Prepare lists for names and ids
-    cap_names = []
-    cap_ids = []
-    for cap in site_plus_capteur:
-        name, cid = cap.rsplit(" - ", 1)
-        cap_names.append(name)
-        cap_ids.append(int(cid))
-
-    # Get geo data for all sensors and station
-    gdf = get_geoDF(
-        id_capteur=cap_ids,  # Assuming get_geoDF can handle a list of ids
-        polluant=polluant,
-        start_date=start_date,
-        end_date=end_date,
-        nom_station=station_name,
-    )
-
-    fig_map = go.Figure(layout=dict(height=600, width=800))
-
-    # Use a color palette for unique colors
-    palette = plotly.colors.qualitative.Plotly
-    n_colors = len(palette)
-
-    # Add microcapteur markers with unique colors and ID in legend
-    for i, cap_id in enumerate(cap_ids):
-        row = gdf.iloc[i]
-        color = palette[i % n_colors]  # Cycle through palette if more sensors than colors
-        fig_map.add_trace(
-            go.Scattermapbox(
-                lat=[row.geometry.y],
-                lon=[row.geometry.x],
-                name=f"Capteur {cap_id}",  # ID in legend
-                mode="markers",
-                marker=dict(size=15, color=color),
-            )
-        )
-
-    # Add station marker only if station_name is provided and present in gdf
-    if station_name and len(gdf) > len(cap_ids):
-        station_row = gdf.iloc[-1]
-        fig_map.add_trace(
-            go.Scattermapbox(
-                lat=[station_row.geometry.y],
-                lon=[station_row.geometry.x],
-                name=station_name,
-                mode="markers",
-                marker=dict(size=15, color=COLORS["markers"]["station"]),
-            )
-        )
-
-    fig_map.update_layout(
-        mapbox_style="satellite-streets",
-        mapbox_accesstoken="pk.eyJ1IjoibHVjYXNoZWlucnkiLCJhIjoiY21hcGR0emloMGhhMTJpcjNobnlnNjg2YyJ9.SHuOyKk5vzAZm6896SdnYA",
-        mapbox_zoom=6.5,
-        mapbox_center=dict(lon=6, lat=44),
-        autosize=True,
-        margin=dict(t=0, b=0, l=5, r=0),
-    )
-
-    return fig_map
-
-
 @app.callback(
     Output("timeseries", "figure"),
     Output("diurnal_cycle_workweek", "figure"),
@@ -245,6 +166,7 @@ def generate_map(
     Output("summary_table", "columns"),
     Output("summary_table", "data"),
     Output("avg24h", "figure"),
+    Output("map", "figure"),
     Input("my-date-picker-range", "start_date"),
     Input("my-date-picker-range", "end_date"),
     Input("micro_capteur_sites_dropdown", "value"),
@@ -791,13 +713,62 @@ def build_graphs(
     columns = [{"name": col, "id": col} for col in summary_df.columns]
     data = summary_df.to_dict("records")
 
+     # Get geo data for all sensors and station
+    # Only take columns corresponding to capteurs (exclude "station" if present)
+    cap_ids = [col for col in graph_data.columns if col != "station"]
+    gdf = get_geoDF(
+        id_capteur=cap_ids,  # Only capteur ids
+        polluant=polluant,
+        start_date=start_date,
+        end_date=end_date,
+        nom_station=station_name,
+    )
+
+    fig_map = go.Figure(layout=dict(height=600, width=800))
+
+    # Add microcapteur markers with unique colors and ID in legend
+    for i, cap_id in enumerate(graph_data.columns):
+        row = gdf.iloc[i]
+        color = color_map[cap_id] 
+        fig_map.add_trace(
+            go.Scattermapbox(
+                lat=[row.geometry.y],
+                lon=[row.geometry.x],
+                name=f"Capteur {cap_id}",  # ID in legend
+                mode="markers",
+                marker=dict(size=15, color=color),
+            )
+        )
+
+    # Add station marker only if station_name is provided and present in gdf
+    if station_name and len(gdf) > len(cap_ids):
+        station_row = gdf.iloc[-1]
+        fig_map.add_trace(
+            go.Scattermapbox(
+                lat=[station_row.geometry.y],
+                lon=[station_row.geometry.x],
+                name=station_name,
+                mode="markers",
+                marker=dict(size=15, color="firebrick"),  # Different color for station
+            )
+        )
+
+    fig_map.update_layout(
+        mapbox_style="satellite-streets",
+        mapbox_accesstoken="pk.eyJ1IjoibHVjYXNoZWlucnkiLCJhIjoiY21hcGR0emloMGhhMTJpcjNobnlnNjg2YyJ9.SHuOyKk5vzAZm6896SdnYA",
+        mapbox_zoom=6.5,
+        mapbox_center=dict(lon=6, lat=44),
+        autosize=True,
+        margin=dict(t=0, b=0, l=5, r=0),
+    )
     return (
         timeseries_fig,
         week_diurnal_cycle_fig,
         wend_diurnal_cycle_fig,
         fig_boxplot,
-        fig_corr,  # Add this to the return
+        fig_corr,
         columns,
         data,
-        fig_24h_avg,  # Add this to the return
+        fig_24h_avg,
+        fig_map,  # <-- Add map here
     )
