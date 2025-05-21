@@ -157,6 +157,7 @@ def build_title(poll: str):
         html.Center(f"Données {poll}"),
     )
 
+
 @app.callback(
     Output("timeseries", "figure"),
     Output("diurnal_cycle_workweek", "figure"),
@@ -530,9 +531,7 @@ def build_graphs(
         title=graph_title("boxplot", aggregation, polluant),
         title_x=0.5,
         images=watermark,
-        yaxis=dict(
-            title=f"{polluant} {UNITS[polluant]}"
-        ),
+        yaxis=dict(title=f"{polluant} {UNITS[polluant]}"),
         xaxis_title="",
         xaxis2_showticklabels=False,
         showlegend=False,
@@ -713,7 +712,7 @@ def build_graphs(
     columns = [{"name": col, "id": col} for col in summary_df.columns]
     data = summary_df.to_dict("records")
 
-     # Get geo data for all sensors and station
+    # Get geo data for all sensors and station
     # Only take columns corresponding to capteurs (exclude "station" if present)
     # only take last digits of the column names
     cap_ids = [col for col in graph_data.columns if col != "station"]
