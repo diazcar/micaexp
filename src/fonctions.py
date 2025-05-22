@@ -6,11 +6,6 @@ from src.glob_vars import SEUILS
 from src.routines.microspot_api import request_microspot
 from src.routines.xair import ISO, request_xr
 
-
-def list_of_strings(arg):
-    return arg.split(",")
-
-
 def weekday_profile(
     data: pd.DataFrame,
     week_section: str,
@@ -42,17 +37,6 @@ def weekday_profile(
     data.set_index("date", inplace=True)
     return out_data
 
-
-def get_max(
-    data1: pd.DataFrame,
-    data2: pd.DataFrame,
-):
-    if data1.max().max() > data2.max().max():
-        max = data1.max().max()
-    else:
-        max = data2.max().max()
-
-    return max
 
 
 def get_stats(
@@ -95,19 +79,6 @@ def get_stats(
         seuil_alert,
     )
 
-
-def clean_outlayers(data: pd.DataFrame):
-
-    for col in data.columns:
-        Q1 = data[col].quantile(0.50)
-        Q2 = data[col].quantile(0.99)
-        iqr = Q2 - Q1
-        upper = Q1 + 1.5 * iqr
-
-        data[col] = data[col].where(data[col].le(upper), np.nan)
-    return data
-
-
 def get_color_map(columns):
     """
     Assigns 'firebrick' to 'station' and Plotly default colors to other columns.
@@ -143,29 +114,6 @@ def graph_title(
         if aggregation == "journalière":
             title = f"Distribution des concentrations journalièrs en {polluant}"
     return title
-
-
-def validate_and_aggregate(
-    data: pd.DataFrame,
-    threshold: int = 0.75,
-):
-    data["data_coverage"] = (~np.isnan(data["valueModified"])).astype(int)
-
-    hour_data = data.resample("H").mean()
-    hour_data.loc[
-        hour_data["data_coverage"] < threshold, ["valueModified", "value"]
-    ] = np.nan
-    hour_data.drop(["data_coverage"], axis=1, inplace=True)
-
-    day_data = data.resample("D").mean()
-    day_data.loc[day_data["data_coverage"] < threshold, ["valueModified", "value"]] = (
-        np.nan
-    )
-    day_data.drop(["data_coverage"], axis=1, inplace=True)
-
-    data.drop(["data_coverage"], axis=1, inplace=True)
-
-    return (hour_data, day_data)
 
 
 def get_geoDF(
@@ -217,48 +165,3 @@ def get_geoDF(
 
     return gdf
 
-
-def get_zoom_level_and_center(longitudes=None, latitudes=None):
-    """Function documentation:\n
-    Basic framework adopted from Krichardson under the following thread:
-    https://community.plotly.com/t/dynamic-zoom-for-mapbox/32658/7
-
-    # NOTE:
-    # THIS IS A TEMPORARY SOLUTION UNTIL THE DASH TEAM IMPLEMENTS DYNAMIC ZOOM
-    # in their plotly-functions associated with mapbox, such as go.Densitymapbox() etc.
-
-    Returns the appropriate zoom-level for these plotly-mapbox-graphics along with
-    the center coordinate tuple of all provided coordinate tuples.
-    """
-
-    if (latitudes is None or longitudes is None) or (len(latitudes) != len(longitudes)):
-        return 0, (0, 0)
-
-    # Get the boundary-box
-    b_box = {}
-    b_box["height"] = latitudes.max() - latitudes.min()
-    b_box["width"] = longitudes.max() - longitudes.min()
-    b_box["center"] = (np.mean(longitudes), np.mean(latitudes))
-
-    # get the area of the bounding box in order to calculate a zoom-level
-    area = (b_box["height"] * 1.5) * (b_box["width"] * 1.5)
-
-    # * 1D-linear interpolation with numpy:
-    # - Pass the area as the only x-value and not as a list, in order to return a scalar as well
-    # - The x-points "xp" should be in parts in comparable order of magnitude of the given area
-    # - The zpom-levels are adapted to the areas, i.e. start with the smallest area possible of 0
-    # which leads to the highest possible zoom value 20, and so forth decreasing with increasing areas
-    # as these variables are antiproportional
-    zoom = np.interp(
-        x=area,
-        xp=[0, 6**-10, 5**-10, 4**-10, 3**-10, 2**-10, 1**-10, 1**-5],
-        fp=[24, 20, 15, 14, 13, 12, 7, 5],
-    )
-
-    # Finally, return the zoom level and the associated boundary-box center coordinates
-    return zoom, b_box["center"]
-
-
-def save_dataframes(dataframe_list: list[pd.DataFrame], path: str):
-    for i, df in enumerate(dataframe_list):
-        df.to_csv(f"{path}/data{i}.csv")

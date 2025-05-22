@@ -14,7 +14,7 @@ def make_timeseries(graph_data, color_map, aggregation, polluant, station_name=N
                 y=graph_data[col],
                 x=graph_data.index,
                 line=dict(color=color_map[col]),
-                name="Station" if col == "station" else col,
+                name=station_name if col == "station" else col,
             )
         )
     if polluant in ["PM10", "PM2.5"]:

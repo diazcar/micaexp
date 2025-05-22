@@ -17,7 +17,7 @@ def make_boxplot(
         fig_boxplot.add_trace(
             go.Box(
                 y=graph_data[col],
-                name="Station" if col == "station" else col,
+                name=station_name if col == "station" else col,
                 line=dict(color=color_map[col]),
             )
         )

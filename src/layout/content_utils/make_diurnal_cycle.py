@@ -6,7 +6,7 @@ from src.fonctions import weekday_profile
 
 
 def make_diurnal_cycle(
-    graph_data, color_map, polluant, aggregation, title, week_section="workweek"
+    graph_data, color_map, polluant, aggregation, title, week_section="workweek",station_name=None
 ):
     # Compute the diurnal cycle profile inside the function
     diurnal_data = weekday_profile(
@@ -22,7 +22,7 @@ def make_diurnal_cycle(
                 y=diurnal_data[col],
                 x=diurnal_data.index,
                 line=dict(color=color_map.get(col, None)),
-                name="Station" if col == "station" else col,
+                name=station_name if col == "station" else col,
             )
         )
     fig.update_layout(

@@ -18,7 +18,7 @@ def make_24h_avg(
                     x=rolling_24h.index,
                     mode="lines",
                     line=dict(color=color_map.get(col, None), dash="solid"),
-                    name="Station" if station_name and col == "station" else col,
+                    name=station_name if station_name and col == "station" else col,
                 )
             )
         if polluant in ["PM10", "PM2.5"]:
