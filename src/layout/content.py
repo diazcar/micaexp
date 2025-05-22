@@ -308,10 +308,18 @@ def build_graphs(
         graph_data, color_map, aggregation, polluant, station_name
     )
     week_diurnal_cycle_fig = make_diurnal_cycle(
-        week_diurnal_cycle_data, color_map, polluant, aggregation, "Profil journalier en semaine"
+        week_diurnal_cycle_data,
+        color_map,
+        polluant,
+        aggregation,
+        "Profil journalier en semaine",
     )
     wend_diurnal_cycle_fig = make_diurnal_cycle(
-        wend_diurnal_cycle_data, color_map, polluant, aggregation, "Profil journalier en week-end"
+        wend_diurnal_cycle_data,
+        color_map,
+        polluant,
+        aggregation,
+        "Profil journalier en week-end",
     )
     fig_boxplot = make_boxplot(
         graph_data, color_map, aggregation, polluant, station_name
