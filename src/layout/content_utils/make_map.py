@@ -1,7 +1,26 @@
 from plotly import graph_objects as go
+from src.fonctions import get_geoDF
 
 
-def make_map(graph_data, gdf, color_map, station_name):
+def make_map(
+    graph_data,
+    color_map,
+    polluant,
+    start_date,
+    end_date,
+    station_name=None,
+):
+
+    gdf = get_geoDF(
+        id_capteur=[
+            int(col.split("_")[-1]) for col in graph_data.columns if col != "station"
+        ],
+        polluant=polluant,
+        start_date=start_date,
+        end_date=end_date,
+        nom_station=station_name,
+    )
+
     fig_map = go.Figure(layout=dict(height=600, width=800))
     capteur_cols = [col for col in graph_data.columns if col != "station"]
     for idx, cap_id in enumerate(capteur_cols):
@@ -28,8 +47,7 @@ def make_map(graph_data, gdf, color_map, station_name):
             )
         )
     fig_map.update_layout(
-        mapbox_style="satellite-streets",
-        mapbox_accesstoken="pk.eyJ1IjoibHVjYXNoZWlucnkiLCJhIjoiY21hcGR0emloMGhhMTJpcjNobnlnNjg2YyJ9.SHuOyKk5vzAZm6896SdnYA",
+        mapbox_style="open-street-map",
         mapbox_zoom=6.5,
         mapbox_center=dict(lon=6, lat=44),
         autosize=True,

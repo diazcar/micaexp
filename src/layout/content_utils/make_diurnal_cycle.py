@@ -2,11 +2,17 @@ from src.glob_vars import UNITS
 
 
 from plotly import graph_objects as go
+from src.fonctions import weekday_profile
 
 
 def make_diurnal_cycle(
-    diurnal_data, color_map, polluant, aggregation, title
+    graph_data, color_map, polluant, aggregation, title, week_section="workweek"
 ):
+    # Compute the diurnal cycle profile inside the function
+    diurnal_data = weekday_profile(
+        data=graph_data,
+        week_section=week_section,
+    )
     dcycle_xticks_div = 2 if aggregation == "quart-horaire" else 1
     y_max = diurnal_data.max().max()
     fig = go.Figure()

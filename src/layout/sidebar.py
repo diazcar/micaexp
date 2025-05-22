@@ -35,8 +35,6 @@ def get_sidebar():
                 [
                     dcc.DatePickerRange(
                         id="my-date-picker-range",
-                        # max_date_allowed=TIME_NOW,
-                        # min_date_allowed=TIME_NOW,
                         initial_visible_month=TIME_NOW,
                         start_date=time_window(format="%Y-%m-%d")[0],
                         end_date=time_window(format="%Y-%m-%d")[1],
@@ -63,17 +61,6 @@ def get_sidebar():
                     )
                 ]
             ),
-            # html.Hr(),
-            # html.P("Campagne", className="lead"),
-            # html.Div(
-            #     [
-            #         dcc.Dropdown(
-            #             options=['C1', 'C2', 'C3'],
-            #             value=None,
-            #             id="campagne_dropdown",
-            #         )
-            #     ]
-            # ),
             html.Hr(),
             html.B("Sites (microcapteur_ID) "),
             html.Div(
@@ -99,14 +86,6 @@ def get_sidebar():
                     )
                 ]
             ),
-            # html.Hr(),
-            # html.H4(html.B('Micro Capteur')),
-            # html.H6(id='micro_capteur_info'),
-            # html.Br(),
-            # html.Hr(),
-            # html.H4(html.B("Station AtmoSud")),
-            # html.H6(id='station_info'),
-            # html.Img(src="assets/boxplot_description.png"),
         ],
         style=SIDEBAR_STYLE,
     )
