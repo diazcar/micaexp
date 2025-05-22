@@ -5,9 +5,7 @@ from src.glob_vars import SEUILS, UNITS
 from plotly import graph_objects as go
 
 
-def make_timeseries(
-    graph_data, color_map, aggregation, polluant, station_name=None
-):
+def make_timeseries(graph_data, color_map, aggregation, polluant, station_name=None):
     timeseries_fig = go.Figure()
     y_max = graph_data.max().max()
     for col in graph_data.columns:
