@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from src.routines.xair import wrap_xair_request, ISO
-from src.routines.microspot_api import request_microspot
+from src.api_calls.xair import wrap_xair_request, ISO
+from src.api_calls.microspot_api import request_microspot
 
 
 def build_graph_data(

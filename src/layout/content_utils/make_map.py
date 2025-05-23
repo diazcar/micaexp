@@ -1,5 +1,5 @@
 from plotly import graph_objects as go
-from src.fonctions import get_geoDF
+from src.utils.fonctions import get_geoDF
 
 
 def make_map(

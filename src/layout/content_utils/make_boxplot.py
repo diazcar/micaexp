@@ -1,5 +1,5 @@
-from src.fonctions import graph_title
-from src.glob_vars import SEUILS, UNITS
+from src.utils.fonctions import graph_title
+from src.utils.glob_vars import SEUILS, UNITS
 
 
 from plotly import graph_objects as go

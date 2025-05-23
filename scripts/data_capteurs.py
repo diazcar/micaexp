@@ -1,7 +1,7 @@
 # %%
 import sys
 import pandas as pd
-from src.routines.microspot_api import request_microspot
+from src.api_calls.microspot_api import request_microspot
 
 sys.path.append("/home/lucasheinry/code/micaexp")
 

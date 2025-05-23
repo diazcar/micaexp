@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 from dash import html, dcc, Input, Output, dash_table
 import dash_bootstrap_components as dbc
 import numpy as np
-from src.fonctions import get_color_map
-from src.glob_vars import COLORS
+from src.utils.fonctions import get_color_map
+from src.utils.glob_vars import COLORS
 from src.layout.content_utils.build_graph_data import build_graph_data
 from src.layout.content_utils.make_24h_avg import make_24h_avg
 from src.layout.content_utils.make_boxplot import make_boxplot

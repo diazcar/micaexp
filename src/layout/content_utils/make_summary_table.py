@@ -1,5 +1,5 @@
-from src.fonctions import get_stats
-from src.glob_vars import SEUILS
+from src.utils.fonctions import get_stats
+from src.utils.glob_vars import SEUILS
 
 
 import pandas as pd

@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 import geopandas as gp
 import plotly.colors
-from src.glob_vars import SEUILS
-from src.routines.microspot_api import request_microspot
-from src.routines.xair import ISO, request_xr
+from src.utils.glob_vars import SEUILS
+from src.api_calls.microspot_api import request_microspot
+from src.api_calls.xair import ISO, request_xr
 
 
 def weekday_profile(

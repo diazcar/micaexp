@@ -1,6 +1,6 @@
-from src.glob_vars import UNITS, SEUILS
+from src.utils.glob_vars import UNITS, SEUILS
 from plotly import graph_objects as go
-from src.fonctions import weekday_profile
+from src.utils.fonctions import weekday_profile
 
 
 def make_diurnal_cycle(
