@@ -51,9 +51,9 @@ def get_sidebar():
             html.Hr(),
             html.B("Station Atmosud"),
             dcc.Dropdown(
-                options=["ARSON"],
+                options=[],  # No default options
                 id="station_xair_dropdown",
-                value="ARSON",
+                value=None,  # No default value
                 className="dropUp",
                 style={"border": "0", "background": "transparent"},
             ),
@@ -79,6 +79,16 @@ def get_sidebar():
                 id="load_search_button",
                 n_clicks=0,
                 style={"margin-top": "5px"},
+            ),
+            html.Button(
+                "Delete Search",
+                id="delete_search_button",
+                n_clicks=0,
+                style={
+                    "margin-top": "5px",
+                    "background-color": "#e57373",
+                    "color": "white",
+                },
             ),
             dcc.Store(id="saved_searches_store", storage_type="local"),
         ],
@@ -120,20 +130,43 @@ def get_capteur_site_dropdown(poll: str, start_date: str, end_date: str):
 @app.callback(
     Output("saved_searches_store", "data"),
     Input("save_search_button", "n_clicks"),
+    Input("delete_search_button", "n_clicks"),
     State("group_name_input", "value"),
     State("micro_capteur_sites_dropdown", "value"),
     State("station_xair_dropdown", "value"),
+    State("saved_searches_dropdown", "value"),
     State("saved_searches_store", "data"),
+    prevent_initial_call=True,
 )
-def save_search(n_clicks, group_name, capteurs, station, store_data):
-    if not group_name:
-        return dash.no_update
+def manage_searches(
+    save_clicks,
+    delete_clicks,
+    group_name,
+    capteurs,
+    station,
+    selected_group,
+    store_data,
+):
+    triggered_id = ctx.triggered_id
     store_data = store_data or {}
-    store_data[group_name] = {
-        "capteurs": capteurs,
-        "station": station,
-    }
-    return store_data
+
+    if triggered_id == "save_search_button":
+        if not group_name:
+            return dash.no_update
+        store_data[group_name] = {
+            "capteurs": capteurs,
+            "station": station,
+        }
+        return store_data
+
+    if triggered_id == "delete_search_button":
+        if not selected_group or selected_group not in store_data:
+            return dash.no_update
+        store_data = store_data.copy()
+        store_data.pop(selected_group)
+        return store_data
+
+    return dash.no_update
 
 
 @app.callback(

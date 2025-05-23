@@ -10,7 +10,10 @@ def weekday_profile(
     data: pd.DataFrame,
     week_section: str,
 ):
-    index = data.index.name
+    # Ensure index has a name, fallback to 'date'
+    index = data.index.name or "date"
+    if data.index.name is None:
+        data.index.name = "date"
     data.reset_index(inplace=True)
     if week_section == "workweek":
         days_data = data[data[index].dt.weekday < 5]
@@ -34,7 +37,7 @@ def weekday_profile(
     out_data["heure"] = pd.to_datetime(out_data["heure"], format=datime_format)
     out_data.set_index("heure", inplace=True)
 
-    data.set_index("date", inplace=True)
+    data.set_index(index, inplace=True)
     return out_data
 
 
