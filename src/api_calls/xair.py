@@ -324,24 +324,6 @@ def test_path(path: str, mode: str):
             os.remove(path)
 
 
-def get_moymax_data(data, measure_id, poll_site_info, threshold=0.75):
-
-    pd.options.mode.chained_assignment = None
-
-    data.drop(["id"], axis=1, inplace=True)
-    data["data_coverage"] = (~np.isnan(data["value"])).astype(int)
-
-    moymax_jour = data.resample("d").mean().rename(columns={"value": "mean"})
-    moymax_jour["max"] = data["value"].resample("d").max()
-    moymax_jour.loc[moymax_jour["data_coverage"] < threshold, ["mean", "max"]] = np.nan
-
-    site_info = poll_site_info[poll_site_info["id"] == measure_id]
-
-    add_poll_info(moymax_jour, site_info, site_info.columns.to_list())
-
-    return moymax_jour
-
-
 def add_poll_info(
     data: pd.DataFrame,
     site_info: pd.DataFrame,
@@ -367,40 +349,6 @@ def mask_aorp(data):
     )
     return data[["id", "value", "unit"]]
 
-
-def get_figure_title(
-    group_data: pd.DataFrame,
-    group_sites: pd.DataFrame,
-    id: str,
-):
-    """_summary_
-
-    Parameters
-    ----------
-    group_data : pd.DataFrame
-        _description_
-    group_sites : pd.DataFrame
-        _description_
-    id : str
-        _description_
-
-    Returns
-    -------
-    _type_
-        _description_
-    """
-    if "MOBILE" in id.upper():
-        name = group_data[group_data["id"] == id]["id_site"].values[0]
-        site_name = group_sites[group_sites["id"] == name]["labelSite"].values[0]
-        dept_code = group_sites[group_sites["labelSite"] == site_name][
-            "dept_code"
-        ].values[0]
-
-    else:
-        site_name = group_data[group_data["id"] == id]["id_site"].values[0]
-        dept_code = group_sites[group_sites["id"] == site_name]["dept_code"].values[0]
-
-    return (site_name, dept_code)
 
 
 def mask_duplicates(

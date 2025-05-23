@@ -3,8 +3,6 @@ import pandas as pd
 
 TIME_NOW = dt.datetime.today()
 
-PHYSICALS = pd.read_csv("./data/physicals.csv").set_index("id").to_dict("index")
-
 UNITS = {
     "PM10": "µg/m³",
     "PM2.5": "µg/m³",
