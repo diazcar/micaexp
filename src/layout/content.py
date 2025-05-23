@@ -2,9 +2,7 @@ from dotenv import load_dotenv
 from dash import html, dcc, Input, Output, dash_table
 import dash_bootstrap_components as dbc
 import numpy as np
-from src.fonctions import (
-    get_color_map,
-)
+from src.fonctions import get_color_map
 from src.glob_vars import COLORS
 from src.layout.content_utils.build_graph_data import build_graph_data
 from src.layout.content_utils.make_24h_avg import make_24h_avg
@@ -16,8 +14,6 @@ from src.layout.content_utils.make_summary_table import make_summary_table
 from src.layout.content_utils.make_timeseries import make_timeseries
 from src.layout.styles import CONTENT_STYLE
 from maindash import app
-
-
 
 load_dotenv()
 
@@ -32,75 +28,94 @@ def get_content():
                     html.Br(),
                     dash_table.DataTable(
                         id="summary_table",
-                        columns=[],  # Will be set dynamically
-                        data=[],  # Will be set dynamically
+                        columns=[],
+                        data=[],
                         style_table={"overflowX": "auto"},
                         style_cell={"textAlign": "center"},
                     ),
                     html.Br(),
-                    dbc.Row(
+                    dcc.Tabs(
                         [
-                            dbc.Col(
-                                [
-                                    dcc.Graph(
-                                        figure={},
-                                        id="timeseries",
-                                    ),
-                                ],
-                                width=12,
-                            ),
-                        ]
-                    ),
-                    html.Br(),
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    dcc.Graph(
-                                        figure={},
-                                        id="diurnal_cycle_workweek",
+                            dcc.Tab(
+                                label="Séries temporelles",
+                                children=[
+                                    html.Div(
+                                        [
+                                            dcc.Graph(id="timeseries"),
+                                        ],
+                                        style={"padding": "20px"},
                                     )
                                 ],
-                                width=6,
                             ),
-                            dbc.Col(
-                                [
-                                    dcc.Graph(
-                                        figure={},
-                                        id="diurnal_cycle_weekend",
+                            dcc.Tab(
+                                label="Profils journaliers",
+                                children=[
+                                    html.Div(
+                                        [
+                                            dbc.Row(
+                                                [
+                                                    dbc.Col(
+                                                        dcc.Graph(
+                                                            id="diurnal_cycle_workweek"
+                                                        ),
+                                                        width=6,
+                                                    ),
+                                                    dbc.Col(
+                                                        dcc.Graph(
+                                                            id="diurnal_cycle_weekend"
+                                                        ),
+                                                        width=6,
+                                                    ),
+                                                ]
+                                            )
+                                        ],
+                                        style={"padding": "20px"},
                                     )
                                 ],
-                                width=6,
                             ),
-                        ]
-                    ),
-                    html.Br(),
-                    html.Br(),
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                [
-                                    html.Br(),
-                                    html.Br(),
-                                    html.Br(),
-                                    html.Br(),
-                                    dcc.Graph(figure={}, id="boxplot"),
-                                    dcc.Graph(
-                                        figure={}, id="avg24h"
-                                    ),  # <-- Add this line
-                                    dcc.Graph(
-                                        figure={}, id="correlation_matrix"
-                                    ),  # Add this line
-                                    dcc.Graph(
-                                        figure={}, id="map"
-                                    ),  
+                            dcc.Tab(
+                                label="Boxplot",
+                                children=[
+                                    html.Div(
+                                        [
+                                            dcc.Graph(id="boxplot"),
+                                        ],
+                                        style={"padding": "20px"},
+                                    )
                                 ],
-                                width=12,
                             ),
-                            # Optionally, you can remove the second column or leave it empty
-                            dbc.Col(
-                                [],
-                                width=12,
+                            dcc.Tab(
+                                label="Moyenne glissante 24h",
+                                children=[
+                                    html.Div(
+                                        [
+                                            dcc.Graph(id="avg24h"),
+                                        ],
+                                        style={"padding": "20px"},
+                                    )
+                                ],
+                            ),
+                            dcc.Tab(
+                                label="Corrélation",
+                                children=[
+                                    html.Div(
+                                        [
+                                            dcc.Graph(id="correlation_matrix"),
+                                        ],
+                                        style={"padding": "20px"},
+                                    )
+                                ],
+                            ),
+                            dcc.Tab(
+                                label="Carte",
+                                children=[
+                                    html.Div(
+                                        [
+                                            dcc.Graph(id="map"),
+                                        ],
+                                        style={"padding": "20px"},
+                                    )
+                                ],
                             ),
                         ]
                     ),
@@ -123,15 +138,15 @@ def get_content():
                             "- Niveau de concentration à atteindre dans un délai donné",
                             html.Br(),
                             html.B("Valeur limite (VL) "),
-                            "-Niveau réglementaire de concentration à ne pas dépasser",
+                            "- Niveau réglementaire de concentration à ne pas dépasser",
                             html.Br(),
                             html.B("Objectif qualité (OQ) "),
-                            "-Niveau de concentration à attendre à long terme",
+                            "- Niveau de concentration à attendre à long terme",
                             html.Br(),
                         ]
                     ),
                 ],
-            )
+            ),
         ],
         style=CONTENT_STYLE,
     )
@@ -142,9 +157,7 @@ def get_content():
     Input("polluant_dropdown", "value"),
 )
 def build_title(poll: str):
-    return html.B(
-        html.Center(f"Données {poll}"),
-    )
+    return html.B(html.Center(f"Données {poll}"))
 
 
 @app.callback(
@@ -176,7 +189,6 @@ def build_graphs(
         start_date, end_date, site_plus_capteur, polluant, station_name
     )
     graph_data = hour_data if aggregation == "horaire" else quart_data
-
     color_map = get_color_map(graph_data.columns)
 
     timeseries_fig = make_timeseries(
@@ -209,12 +221,7 @@ def build_graphs(
         graph_data, color_map, aggregation, polluant, station_name
     )
     fig_map = make_map(
-        graph_data,
-        color_map,
-        polluant,
-        start_date,
-        end_date,
-        station_name,
+        graph_data, color_map, polluant, start_date, end_date, station_name
     )
 
     return (

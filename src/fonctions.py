@@ -6,6 +6,7 @@ from src.glob_vars import SEUILS
 from src.routines.microspot_api import request_microspot
 from src.routines.xair import ISO, request_xr
 
+
 def weekday_profile(
     data: pd.DataFrame,
     week_section: str,
@@ -39,7 +40,6 @@ def weekday_profile(
 
     data.set_index(index, inplace=True)
     return out_data
-
 
 
 def get_stats(
@@ -81,6 +81,7 @@ def get_stats(
         seuil_information,
         seuil_alert,
     )
+
 
 def get_color_map(columns):
     """
@@ -167,4 +168,3 @@ def get_geoDF(
     )
 
     return gdf
-

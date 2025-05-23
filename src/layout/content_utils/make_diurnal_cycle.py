@@ -1,12 +1,16 @@
-from src.glob_vars import UNITS
-
-
+from src.glob_vars import UNITS, SEUILS
 from plotly import graph_objects as go
 from src.fonctions import weekday_profile
 
 
 def make_diurnal_cycle(
-    graph_data, color_map, polluant, aggregation, title, week_section="workweek",station_name=None
+    graph_data,
+    color_map,
+    polluant,
+    aggregation,
+    title,
+    week_section="workweek",
+    station_name=None,
 ):
     # Compute the diurnal cycle profile inside the function
     diurnal_data = weekday_profile(
@@ -25,6 +29,23 @@ def make_diurnal_cycle(
                 name=station_name if col == "station" else col,
             )
         )
+    # Add seuils if polluant is PM10 or PM2.5
+    if polluant in ["PM10", "PM2.5"]:
+        for i, seuil in enumerate(list(SEUILS[polluant]["FR"].keys())):
+            fig.add_trace(
+                go.Scatter(
+                    y=[SEUILS[polluant]["FR"][seuil]] * len(diurnal_data.index),
+                    x=diurnal_data.index,
+                    name=seuil,
+                    line=dict(color="black", dash="dash"),
+                    showlegend=False,
+                )
+            )
+            fig.add_annotation(
+                x=diurnal_data.index[round(len(diurnal_data.index) * 0.1)],
+                y=SEUILS[polluant]["FR"][seuil],
+                text=seuil,
+            )
     fig.update_layout(
         title=title,
         title_x=0.5,
