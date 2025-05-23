@@ -8,7 +8,7 @@ def make_corr_matrix(graph_data):
             z=corr_matrix.values,
             x=corr_matrix.columns,
             y=corr_matrix.index,
-            colorscale="Viridis",
+            colorscale="PiYG",
             zmin=-1,
             zmax=1,
             colorbar=dict(title="Correlation"),
