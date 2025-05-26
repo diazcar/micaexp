@@ -62,6 +62,8 @@ def build_graph_data(
         capteur_quart_data = capteur_quart_data.rename(
             columns={"valueRaw": micro_col_name}
         )
+        if micro_col_name not in capteur_quart_data.columns:
+            capteur_quart_data[micro_col_name] = np.nan
         capteur_quart_dfs.append(capteur_quart_data[[micro_col_name]])
 
         capteur_hour_data = request_microspot(
