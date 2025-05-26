@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
-from dash import html, dcc, Input, Output, dash_table
+from dash import html, dcc, Input, Output, dash_table, ctx, no_update
 import dash_bootstrap_components as dbc
 import numpy as np
+import pandas as pd
 from src.utils.fonctions import get_color_map
 from src.utils.glob_vars import COLORS
 from src.layout.content_utils.build_graph_data import build_graph_data
@@ -119,6 +120,11 @@ def get_content():
                             ),
                         ]
                     ),
+                    html.Br(),
+                    html.Button(
+                        "Télécharger les données", id="download_btn", n_clicks=0
+                    ),
+                    dcc.Download(id="download_data"),
                     html.Hr(),
                     html.Img(
                         src="assets/valeurs_de_reference.png", style={"height": "70%"}
@@ -235,3 +241,34 @@ def build_graphs(
         fig_24h_avg,
         fig_map,
     )
+
+
+@app.callback(
+    Output("download_data", "data"),
+    Input("download_btn", "n_clicks"),
+    Input("my-date-picker-range", "start_date"),
+    Input("my-date-picker-range", "end_date"),
+    Input("micro_capteur_sites_dropdown", "value"),
+    Input("polluant_dropdown", "value"),
+    Input("station_xair_dropdown", "value"),
+    Input("time_step_dropdown", "value"),
+    prevent_initial_call=True,
+)
+def download_data(
+    n_clicks,
+    start_date,
+    end_date,
+    site_plus_capteur,
+    polluant,
+    station_name,
+    aggregation,
+):
+    if ctx.triggered_id != "download_btn":
+        return no_update
+    quart_data, hour_data = build_graph_data(
+        start_date, end_date, site_plus_capteur, polluant, station_name
+    )
+    graph_data = hour_data if aggregation == "horaire" else quart_data
+    # Convert to CSV
+    csv_string = graph_data.to_csv(index=True, sep=";")
+    return dict(content=csv_string, filename="donnees.csv")
