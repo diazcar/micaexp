@@ -47,8 +47,7 @@ def get_stats(
     minmax_data: pd.DataFrame,
     poll: str,
 ):
-    seuil_information = SEUILS[poll]["FR"]["seuil_information"]
-    seuil_alert = SEUILS[poll]["FR"]["seuil_alerte"]
+    
 
     if poll in ["PM10", "PM2.5"]:
         moyenne_periode = round(hour_data.mean())
@@ -61,25 +60,16 @@ def get_stats(
                 min_periode[i] = 0
                 max_periode[i] = 0
 
-        count_seuil_information = hour_data[hour_data > seuil_information].count()
-
-        count_seuil_alert = hour_data[hour_data > seuil_alert].count()
-
     else:
         moyenne_periode = round(minmax_data.mean())
         min_periode = round(minmax_data.min())
         max_periode = round(minmax_data.max())
-        count_seuil_information = "N/A"
-        count_seuil_alert = "N/A"
+    
 
     return (
-        count_seuil_information,
-        count_seuil_alert,
         moyenne_periode,
         min_periode,
         max_periode,
-        seuil_information,
-        seuil_alert,
     )
 
 
