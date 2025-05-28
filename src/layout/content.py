@@ -221,7 +221,7 @@ def build_graphs(
     fig_boxplot = make_boxplot(
         graph_data, color_map, aggregation, polluant, station_name
     )
-    fig_corr = make_corr_matrix(graph_data)
+    fig_corr = make_corr_matrix(graph_data,station_name)
     columns, data = make_summary_table(graph_data, hour_data, polluant, station_name)
     fig_24h_avg = make_24h_avg(
         graph_data, color_map, aggregation, polluant, station_name
