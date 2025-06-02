@@ -182,6 +182,7 @@ def build_title(poll: str):
     Input("polluant_dropdown", "value"),
     Input("station_xair_dropdown", "value"),
     Input("time_step_dropdown", "value"),
+    Input("show_thresholds_checkbox", "value"),
 )
 def build_graphs(
     start_date: np.datetime64,
@@ -190,15 +191,16 @@ def build_graphs(
     polluant: str,
     station_name: str = None,
     aggregation: str = "quart-horaire",
+    show_thresholds: bool = False,
 ):
-    quart_data, hour_data = build_graph_data(
+    quart_data, hour_data,gdf = build_graph_data(
         start_date, end_date, site_plus_capteur, polluant, station_name
     )
     graph_data = hour_data if aggregation == "horaire" else quart_data
     color_map = get_color_map(graph_data.columns)
 
     timeseries_fig = make_timeseries(
-        graph_data, color_map, aggregation, polluant, station_name
+        graph_data, color_map, aggregation, polluant, station_name, show_thresholds
     )
     week_diurnal_cycle_fig = make_diurnal_cycle(
         graph_data,
@@ -208,6 +210,7 @@ def build_graphs(
         "Profil journalier en semaine",
         week_section="workweek",
         station_name=station_name,
+        show_thresholds=show_thresholds,
     )
     wend_diurnal_cycle_fig = make_diurnal_cycle(
         graph_data,
@@ -217,14 +220,15 @@ def build_graphs(
         "Profil journalier en week-end",
         week_section="weekend",
         station_name=station_name,
+        show_thresholds=show_thresholds,
     )
     fig_boxplot = make_boxplot(
-        graph_data, color_map, aggregation, polluant, station_name
+        graph_data, color_map, aggregation, polluant, station_name, show_thresholds
     )
-    fig_corr = make_corr_matrix(graph_data,station_name)
+    fig_corr = make_corr_matrix(graph_data, station_name)
     columns, data = make_summary_table(graph_data, hour_data, polluant, station_name)
     fig_24h_avg = make_24h_avg(
-        graph_data, color_map, aggregation, polluant, station_name
+        graph_data, color_map, aggregation, polluant, station_name, show_thresholds
     )
     fig_map = make_map(
         graph_data, color_map, polluant, start_date, end_date, station_name

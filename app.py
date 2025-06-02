@@ -8,13 +8,6 @@ app.layout = html.Div(
         dcc.Location(id="url"),
         get_sidebar(),
         get_content(),
-        # html.Hr(
-        #     style={
-        #         'borderWidth': "0.5rem",
-        #         "width": "100%",
-        #         "color": "#17BECF",
-        #         }
-        # ),
     ]
 )
 
