@@ -21,6 +21,27 @@ def get_sidebar():
                 id="polluant_dropdown",
                 style={"border": "0", "background": "transparent"},
             ),
+            # Tickbox si on veut afficher les seuils
+            dcc.Checklist(
+                options=[
+                    {
+                        "label": html.Span(
+                            "Afficher les seuils journaliers",
+                            style={"margin-left": "8px"},
+                        ),
+                        "value": "show_thresholds",
+                    }
+                ],
+                value=[],
+                id="show_thresholds_checkbox",
+                style={
+                    "margin-top": "10px",
+                    "margin-bottom": "10px",
+                    "display": "flex",
+                    "alignItems": "center",
+                },
+                inputStyle={"margin-right": "8px"},
+            ),
             html.Hr(),
             html.B("Dates"),
             dcc.DatePickerRange(
@@ -30,6 +51,11 @@ def get_sidebar():
                 end_date=time_window(format="%Y-%m-%d")[1],
                 display_format="YYYY-MM-DD",
                 style={"font-size": 6},
+                max_date_allowed=datetime.now().date(),
+            ),
+            html.P(
+                "Les dates sont en TU.",
+                style={"font-size": "0.8em", "color": "#888"},
             ),
             html.Hr(),
             html.B("Pas de temps"),
@@ -39,8 +65,13 @@ def get_sidebar():
                 id="time_step_dropdown",
                 style={"border": "0", "background": "transparent"},
             ),
+            # add a note about the time step
+            html.P(
+                "Les données de capteurs au pas de temps horaire sont corrigées, celles au pas de temps quart-horaire sont brutes.",
+                style={"font-size": "0.8em", "color": "#888"},
+            ),
             html.Hr(),
-            html.B("Sites (microcapteur_ID) "),
+            html.B("Sites"),
             dcc.Dropdown(
                 id="micro_capteur_sites_dropdown",
                 className="dropUp",
@@ -49,7 +80,7 @@ def get_sidebar():
                 value=[],  # ← Set default to empty
             ),
             html.Hr(),
-            html.B("Station Atmosud"),
+            html.B("Stations Atmosud"),
             dcc.Dropdown(
                 options=[],  # No default options
                 id="station_xair_dropdown",
@@ -58,30 +89,32 @@ def get_sidebar():
                 style={"border": "0", "background": "transparent"},
             ),
             html.Hr(),
-            html.B("Group Search Configurations"),
+            html.B("Sauvegarder une recherche"),
             dcc.Input(
                 id="group_name_input",
                 type="text",
-                placeholder="Enter group name",
+                placeholder="Entrer un nom de groupe",
                 style={"width": "100%"},
             ),
             html.Button(
-                "Save Search",
+                "Sauvegarder",
                 id="save_search_button",
                 n_clicks=0,
                 style={"margin-top": "5px"},
             ),
             html.Br(),
             html.Br(),
-            dcc.Dropdown(id="saved_searches_dropdown", placeholder="Load saved group"),
+            dcc.Dropdown(
+                id="saved_searches_dropdown", placeholder="Charger une recherche"
+            ),
             html.Button(
-                "Load Search",
+                "Charger",
                 id="load_search_button",
                 n_clicks=0,
                 style={"margin-top": "5px"},
             ),
             html.Button(
-                "Delete Search",
+                "Supprimer",
                 id="delete_search_button",
                 n_clicks=0,
                 style={

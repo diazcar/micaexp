@@ -1,8 +1,13 @@
 from plotly import graph_objects as go
 
 
-def make_corr_matrix(graph_data):
+def make_corr_matrix(graph_data, station_name=None):
+    # if station_name rename column station to station_name
+    if station_name and "station" in graph_data.columns:
+        graph_data = graph_data.rename(columns={"station": station_name})
+    # Calculate the correlation matrix
     corr_matrix = graph_data.corr()
+   
     fig_corr = go.Figure(
         data=go.Heatmap(
             z=corr_matrix.values,

@@ -1,13 +1,29 @@
 from src.utils.fonctions import graph_title
 from src.utils.glob_vars import SEUILS, UNITS
 
-
 from plotly import graph_objects as go
 
 
-def make_timeseries(graph_data, color_map, aggregation, polluant, station_name=None):
+def make_timeseries(
+    graph_data,
+    color_map,
+    aggregation,
+    polluant,
+    station_name=None,
+    show_thresholds=False,
+):
+    # Handle empty data gracefully
+    if graph_data.empty or len(graph_data.index) < 2:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Aucune donnée à afficher",
+            title_x=0.5,
+            plot_bgcolor="#f9f9f9",
+            paper_bgcolor="rgba(0,0,0,0)",
+        )
+        return fig
+
     timeseries_fig = go.Figure()
-    y_max = graph_data.max().max()
     for col in graph_data.columns:
         timeseries_fig.add_trace(
             go.Scatter(
@@ -17,7 +33,8 @@ def make_timeseries(graph_data, color_map, aggregation, polluant, station_name=N
                 name=station_name if col == "station" else col,
             )
         )
-    if polluant in ["PM10", "PM2.5"]:
+    # Only show thresholds if requested
+    if show_thresholds and polluant in ["PM10", "PM2.5"]:
         for i, seuil in enumerate(list(SEUILS[polluant]["FR"].keys())):
             timeseries_fig.add_trace(
                 go.Scatter(
@@ -28,17 +45,11 @@ def make_timeseries(graph_data, color_map, aggregation, polluant, station_name=N
                     showlegend=False,
                 )
             )
-            timeseries_fig.add_annotation(
-                x=graph_data.index[round(len(graph_data.index) * 0.1)],
-                y=SEUILS[polluant]["FR"][seuil],
-                text=seuil,
-            )
-    dtick = graph_data.index[1] - graph_data.index[0]
+    # Remove manual dtick for automatic tick handling by Plotly
     timeseries_fig.update_layout(
         title=graph_title("timeseries", aggregation, polluant),
         title_x=0.5,
         xaxis=dict(
-            dtick=dtick,
             showgrid=True,
             gridcolor="#cccccc",
             gridwidth=1.5,
@@ -50,6 +61,7 @@ def make_timeseries(graph_data, color_map, aggregation, polluant, station_name=N
             gridcolor="#cccccc",
             gridwidth=1.5,
             zeroline=False,
+            autorange=True,  # Enable autoscale for y-axis
         ),
         plot_bgcolor="#f9f9f9",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -66,6 +78,6 @@ def make_timeseries(graph_data, color_map, aggregation, polluant, station_name=N
             r=0,
             t=60,
         ),
-        yaxis_range=[0, y_max + y_max * 0.05],
+        # yaxis_range removed for autoscale
     )
     return timeseries_fig

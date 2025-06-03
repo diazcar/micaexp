@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
+import geopandas as gp
 
-from src.api_calls.xair import wrap_xair_request, ISO
+from src.api_calls.xair import wrap_xair_request, ISO, request_xr
 from src.api_calls.microspot_api import request_microspot
 
 
@@ -12,6 +13,11 @@ def build_graph_data(
     polluant,
     station_name=None,
 ):
+    # Prepare geo info lists
+    site_names = []
+    lons = []
+    lats = []
+
     # Fetch station data only if station_name is provided
     if station_name:
         station_quart_data = wrap_xair_request(
@@ -37,6 +43,28 @@ def build_graph_data(
         station_hour_data = station_hour_data.rename(
             columns={"value": station_col_name}
         )
+        # Get station geo info
+        station_json = request_xr(folder="sites", sites=station_name)
+        if not station_json.empty:
+            site_names.append(
+                station_json["labelSite"].dropna().iloc[0]
+                if station_json["labelSite"].notna().any()
+                else station_name
+            )
+            lons.append(
+                station_json["longitude"].dropna().iloc[0]
+                if station_json["longitude"].notna().any()
+                else np.nan
+            )
+            lats.append(
+                station_json["latitude"].dropna().iloc[0]
+                if station_json["latitude"].notna().any()
+                else np.nan
+            )
+        else:
+            site_names.append(station_name)
+            lons.append(np.nan)
+            lats.append(np.nan)
     else:
         station_quart_data = None
         station_hour_data = None
@@ -65,6 +93,28 @@ def build_graph_data(
         if micro_col_name not in capteur_quart_data.columns:
             capteur_quart_data[micro_col_name] = np.nan
         capteur_quart_dfs.append(capteur_quart_data[[micro_col_name]])
+
+        # Get geo info from microspot data (first non-NaN value)
+        if not capteur_quart_data.empty:
+            site_names.append(
+                capteur_quart_data["site_name"].dropna().iloc[0]
+                if capteur_quart_data["site_name"].notna().any()
+                else cap_name
+            )
+            lons.append(
+                capteur_quart_data["site_lon"].dropna().iloc[0]
+                if capteur_quart_data["site_lon"].notna().any()
+                else np.nan
+            )
+            lats.append(
+                capteur_quart_data["site_lat"].dropna().iloc[0]
+                if capteur_quart_data["site_lat"].notna().any()
+                else np.nan
+            )
+        else:
+            site_names.append(cap_name)
+            lons.append(np.nan)
+            lats.append(np.nan)
 
         capteur_hour_data = request_microspot(
             observationTypeCodes=[ISO[polluant]],
@@ -102,4 +152,18 @@ def build_graph_data(
         else:
             hour_data = pd.concat(capteur_hour_dfs, axis=1)
 
-    return quart_data, hour_data
+    # Build GeoDataFrame
+    df_geo = pd.DataFrame(
+        data={
+            "site_name": site_names,
+            "lon": lons,
+            "lat": lats,
+        }
+    )
+    gdf = gp.GeoDataFrame(
+        df_geo,
+        geometry=gp.points_from_xy(df_geo.lon, df_geo.lat),
+        crs="EPSG:3857",
+    )
+
+    return quart_data, hour_data, gdf

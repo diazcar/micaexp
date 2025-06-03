@@ -11,14 +11,26 @@ def make_diurnal_cycle(
     title,
     week_section="workweek",
     station_name=None,
+    show_thresholds=False,
 ):
     # Compute the diurnal cycle profile inside the function
     diurnal_data = weekday_profile(
         data=graph_data,
         week_section=week_section,
     )
+
+    # Handle empty diurnal_data gracefully
+    if diurnal_data.empty or len(diurnal_data.index) < 2:
+        fig = go.Figure()
+        fig.update_layout(
+            title="Aucune donnée à afficher",
+            title_x=0.5,
+            plot_bgcolor="#f9f9f9",
+            paper_bgcolor="rgba(0,0,0,0)",
+        )
+        return fig
+
     dcycle_xticks_div = 2 if aggregation == "quart-horaire" else 1
-    y_max = diurnal_data.max().max()
     fig = go.Figure()
     for col in diurnal_data.columns:
         fig.add_trace(
@@ -29,8 +41,8 @@ def make_diurnal_cycle(
                 name=station_name if col == "station" else col,
             )
         )
-    # Add seuils if polluant is PM10 or PM2.5
-    if polluant in ["PM10", "PM2.5"]:
+    # Add seuils if requested and polluant is PM10 or PM2.5
+    if show_thresholds and polluant in ["PM10", "PM2.5"]:
         for i, seuil in enumerate(list(SEUILS[polluant]["FR"].keys())):
             fig.add_trace(
                 go.Scatter(
@@ -40,11 +52,6 @@ def make_diurnal_cycle(
                     line=dict(color="black", dash="dash"),
                     showlegend=False,
                 )
-            )
-            fig.add_annotation(
-                x=diurnal_data.index[round(len(diurnal_data.index) * 0.1)],
-                y=SEUILS[polluant]["FR"][seuil],
-                text=seuil,
             )
     fig.update_layout(
         title=title,
@@ -65,6 +72,7 @@ def make_diurnal_cycle(
             gridcolor="#cccccc",
             gridwidth=1.5,
             zeroline=False,
+            autorange=True,  # Enable autoscale for y-axis
         ),
         plot_bgcolor="#f9f9f9",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -81,6 +89,6 @@ def make_diurnal_cycle(
             r=0,
             t=60,
         ),
-        yaxis_range=[0, y_max],
+        # yaxis_range removed for autoscale
     )
     return fig
