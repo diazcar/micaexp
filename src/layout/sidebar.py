@@ -26,7 +26,8 @@ def get_sidebar():
                 options=[
                     {
                         "label": html.Span(
-                            "Afficher les seuils", style={"margin-left": "8px"}
+                            "Afficher les seuils journaliers",
+                            style={"margin-left": "8px"},
                         ),
                         "value": "show_thresholds",
                     }
