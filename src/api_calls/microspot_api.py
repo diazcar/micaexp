@@ -55,39 +55,27 @@ def add_columns_info(
 def response_to_dataframe(
     json_data: json,
 ):
-    """_summary_
-
-    Parameters
-    ----------
-    json_data : json
-        _description_
-    """
     capteurs = pd.json_normalize(json_data)
-
     data = pd.DataFrame()
 
     for i_capteur in range(len(capteurs.index)):
-
         campaigns = pd.json_normalize(capteurs.iloc[i_capteur]["datastreams"])
-
         for i_campaign in range(len(campaigns.index)):
-
             observations = pd.json_normalize(campaigns.iloc[i_campaign]["observations"])
-
             add_columns_info(
                 observations=observations,
                 capteur_info=capteurs.iloc[i_capteur],
                 campaign_info=campaigns.iloc[i_campaign],
             )
+            data = pd.concat([data, observations])
 
-        data = pd.concat([data, observations])
+    # Only process if data is not empty and has 'happenedAt'
+    if data.empty or "happenedAt" not in data.columns:
+        return pd.DataFrame()
 
     data.rename(columns={"happenedAt": "date"}, inplace=True)
     data["date"] = (
-        pd.to_datetime(data["date"])
-        .dt.tz_convert("UTC")
-        .dt.tz_localize(None)
-        # .dt.tz_convert(None)
+        pd.to_datetime(data["date"]).dt.tz_convert("UTC").dt.tz_localize(None)
     )
     data.reset_index(inplace=True)
     data.set_index("date", inplace=True)

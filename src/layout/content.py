@@ -226,7 +226,7 @@ def build_graphs(
         graph_data, color_map, aggregation, polluant, station_name, show_thresholds
     )
     fig_corr = make_corr_matrix(graph_data, station_name)
-    columns, data = make_summary_table(graph_data, hour_data, polluant, station_name)
+    columns, data = make_summary_table(graph_data, station_name)
     fig_24h_avg = make_24h_avg(
         graph_data, color_map, aggregation, polluant, station_name, show_thresholds
     )

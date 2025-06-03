@@ -45,7 +45,7 @@ def make_boxplot(
                 mode="lines",
                 xaxis="x2",
                 showlegend=False,
-                line=dict(dash="dash", color="firebrick", width=2),
+                line=dict(dash="dash", color="black", width=2),
             )
     fig_boxplot.update_layout(
         title=graph_title("boxplot", aggregation, polluant),

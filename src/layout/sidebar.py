@@ -26,15 +26,19 @@ def get_sidebar():
                 options=[
                     {
                         "label": html.Span(
-                            "Afficher les seuils",
-                            style={"margin-left": "8px"}
+                            "Afficher les seuils", style={"margin-left": "8px"}
                         ),
-                        "value": "show_thresholds"
+                        "value": "show_thresholds",
                     }
                 ],
                 value=[],
                 id="show_thresholds_checkbox",
-                style={"margin-top": "10px", "margin-bottom": "10px", "display": "flex", "alignItems": "center"},
+                style={
+                    "margin-top": "10px",
+                    "margin-bottom": "10px",
+                    "display": "flex",
+                    "alignItems": "center",
+                },
                 inputStyle={"margin-right": "8px"},
             ),
             html.Hr(),
@@ -46,6 +50,11 @@ def get_sidebar():
                 end_date=time_window(format="%Y-%m-%d")[1],
                 display_format="YYYY-MM-DD",
                 style={"font-size": 6},
+                max_date_allowed=datetime.now().date(),
+            ),
+            html.P(
+                "Les dates sont en TU.",
+                style={"font-size": "0.8em", "color": "#888"},
             ),
             html.Hr(),
             html.B("Pas de temps"),
@@ -57,7 +66,7 @@ def get_sidebar():
             ),
             # add a note about the time step
             html.P(
-                "Note : Les données de capteurs au pas de temps horaire sont corrigées, celles au pas de temps quart-horaire sont brutes.",
+                "Les données de capteurs au pas de temps horaire sont corrigées, celles au pas de temps quart-horaire sont brutes.",
                 style={"font-size": "0.8em", "color": "#888"},
             ),
             html.Hr(),
@@ -94,7 +103,9 @@ def get_sidebar():
             ),
             html.Br(),
             html.Br(),
-            dcc.Dropdown(id="saved_searches_dropdown", placeholder="Charger une recherche"),
+            dcc.Dropdown(
+                id="saved_searches_dropdown", placeholder="Charger une recherche"
+            ),
             html.Button(
                 "Charger",
                 id="load_search_button",
