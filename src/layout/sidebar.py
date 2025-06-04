@@ -4,8 +4,8 @@ import dash_bootstrap_components as dbc
 from datetime import datetime, timedelta
 from src.utils.glob_vars import TIME_NOW
 from src.layout.styles import SIDEBAR_STYLE
-from src.api_calls.microspot_api import request_microspot
-from src.api_calls.xair import ISO, request_xr, time_window
+from api_calls.microspot_api import request_microspot
+from api_calls.xair import ISO, request_xr, time_window
 from maindash import app
 
 
