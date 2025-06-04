@@ -269,10 +269,11 @@ def download_data(
 ):
     if ctx.triggered_id != "download_btn":
         return no_update
-    quart_data, hour_data = build_graph_data(
+    quart_data, hour_data,gdf = build_graph_data(
         start_date, end_date, site_plus_capteur, polluant, station_name
     )
     graph_data = hour_data if aggregation == "horaire" else quart_data
     # Convert to CSV
     csv_string = graph_data.to_csv(index=True, sep=";")
     return dict(content=csv_string, filename="donnees.csv")
+    
