@@ -1,4 +1,4 @@
-# mipoexp
+# MICAEXP
 
 Micro station status and data analysis.
 
