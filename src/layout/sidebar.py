@@ -51,7 +51,7 @@ def get_sidebar():
                 end_date=time_window(format="%Y-%m-%d")[1],
                 display_format="YYYY-MM-DD",
                 style={"font-size": 6},
-                max_date_allowed=datetime.now().date(),
+                max_date_allowed=datetime.now().date()+ timedelta(days=1),
             ),
             html.P(
                 "Les dates sont en TU.",
