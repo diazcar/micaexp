@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import geopandas as gp
 
-from src.api_calls.xair import wrap_xair_request, ISO, request_xr
-from src.api_calls.microspot_api import request_microspot
+from api_calls.xair import wrap_xair_request, ISO, request_xr
+from api_calls.microspot_api import request_microspot
 
 
 def build_graph_data(

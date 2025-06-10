@@ -14,19 +14,8 @@ def add_columns_info(
     capteur_info: dict,
     campaign_info: dict,
 ):
-    """_summary_
-
-    Parameters
-    ----------
-    capteur_info : dict
-        _description_
-    campagne_info : dict
-        _description_
-    site_info : dict
-        _description_
-    """
-
     capteur_id = capteur_info["id"]
+    capteur_uid = capteur_info["uid"]
     capteur_scaninterval = capteur_info["scanInterval"]
 
     campaign_id = campaign_info["id"]
@@ -37,12 +26,18 @@ def add_columns_info(
         site_lon = None
         site_lat = None
     else:
-        site_id = campaign_info["location.id"]
-        site_name = campaign_info["location.name"]
-        site_lon = campaign_info["location.position"][1]
-        site_lat = campaign_info["location.position"][0]
+        site_id = campaign_info.get("location.id", None)
+        site_name = campaign_info.get("location.name", None)
+        position = campaign_info.get("location.position", None)
+        if isinstance(position, (list, tuple)) and len(position) >= 2:
+            site_lon = position[1]
+            site_lat = position[0]
+        else:
+            site_lon = None
+            site_lat = None
 
     observations["capteur_id"] = capteur_id
+    observations["capteur_uid"] = capteur_uid
     observations["ScanInterval"] = capteur_scaninterval
     observations["campaign_id"] = campaign_id
     observations["campaign_name"] = campaign_name
@@ -74,9 +69,9 @@ def response_to_dataframe(
         return pd.DataFrame()
 
     data.rename(columns={"happenedAt": "date"}, inplace=True)
-    data["date"] = (
-        pd.to_datetime(data["date"]).dt.tz_convert("UTC").dt.tz_localize(None)
-    )
+    data["date"] = pd.to_datetime(data["date"], errors="coerce", utc=True)
+    data["date"] = data["date"].dt.tz_convert("UTC").dt.tz_localize(None)
+    data = data.dropna(subset=["date"])
     data.reset_index(inplace=True)
     data.set_index("date", inplace=True)
 
@@ -85,7 +80,6 @@ def response_to_dataframe(
 
 def request_microspot(
     aggregation: str,
-    timezone: str = "Europe/Paris",
     studies: list = [],
     campaigns: list = [],
     observationTypeCodes: list = ["24"],
@@ -97,55 +91,8 @@ def request_microspot(
         "Content-Type": "application/json",
     },
 ):
-    """_summary_
-
-    Parameters
-    ----------
-    timezone : str, optional
-        by default "Europe/Paris"
-
-    studies : list, optional
-        Study name,
-        by default []
-
-    campaigns : list, optional
-        Campaign ID,
-        by default []
-
-    observationTypeCodes : list, optional
-        Pollutant ISO,
-        by default ["24"]
-
-    devices : list, optional
-        Capteur ID,
-        by default []
-
-    aggregation : str, optional
-        Time aggregation in ['1 h', '15 m'],
-        by default "1 h"
-
-    dateRange : list, optional
-        Date range with time zone information,
-        by default [ "2024-01-01T01:00:00+00:00", "2024-01-30T01:00:00+00:00" ]
-
-    url : str, optional
-        by default "https://spot.atmo-france.org/export-api/observations"
-
-    headers : dict, optional
-        by default {
-            "Authorization": f"Bearer {os.getenv('MICROSPOT_REQUEST_KEY')}",
-            "Content-Type": "application/json",
-            }
-
-
-    Returns
-    -------
-    pd.DataFrame
-        _description_
-    """
-
+    
     json_data = {
-        "timezone": timezone,
         "studies": studies,
         "campaigns": campaigns,
         "observationTypeCodes": observationTypeCodes,
